@@ -7,7 +7,9 @@ from langchain_openai import ChatOpenAI
 from langchain_ollama import ChatOllama
 from enum import Enum
 from pydantic import BaseModel
-from typing import Tuple
+from typing import Tuple, Optional, List
+from dataclasses import dataclass
+from colorama import Fore, Style
 
 
 class ModelProvider(str, Enum):
@@ -19,9 +21,11 @@ class ModelProvider(str, Enum):
     GROQ = "Groq"
     OPENAI = "OpenAI"
     OLLAMA = "Ollama"
+    OPENAI_COMPATIBLE = "OpenAICompatible"
 
 
-class LLMModel(BaseModel):
+@dataclass
+class LLMModel:
     """Represents an LLM model configuration"""
 
     display_name: str
@@ -92,8 +96,22 @@ OLLAMA_LLM_ORDER = [model.to_choice_tuple() for model in OLLAMA_MODELS]
 
 def get_model_info(model_name: str) -> LLMModel | None:
     """Get model information by model_name"""
-    all_models = AVAILABLE_MODELS + OLLAMA_MODELS
-    return next((model for model in all_models if model.model_name == model_name), None)
+    if model_name == "openai_compatible_custom":
+        return LLMModel(
+            display_name="OpenAI Compatible (Custom Endpoint via env vars)",
+            model_name="custom_openai_compatible_model",
+            provider=ModelProvider.OPENAI_COMPATIBLE
+        )
+
+    for model in AVAILABLE_MODELS:
+        if model.model_name == model_name:
+            return model
+
+    for _, ollama_model_name, _ in OLLAMA_LLM_ORDER:
+        if ollama_model_name == model_name:
+            return LLMModel(display_name=f"[ollama] {model_name}", model_name=model_name, provider=ModelProvider.OLLAMA)
+
+    return None
 
 
 def get_model(model_name: str, model_provider: ModelProvider) -> ChatOpenAI | ChatGroq | ChatOllama | None:
@@ -139,3 +157,48 @@ def get_model(model_name: str, model_provider: ModelProvider) -> ChatOpenAI | Ch
             model=model_name,
             base_url=base_url,
         )
+    elif model_provider == ModelProvider.OPENAI_COMPATIBLE:
+        # --- Handling OpenAI Compatible Endpoint ---
+        # 从环境变量获取基础 URL (必需)
+        api_base = os.getenv("OPENAI_API_BASE")
+        if not api_base:
+            # 如果未设置 OPENAI_API_BASE，打印错误并抛出异常
+            print(f"{Fore.RED}Configuration Error: OPENAI_API_BASE environment variable is not set for OpenAI Compatible endpoint.{Style.RESET_ALL}")
+            raise ValueError("OPENAI_API_BASE must be set in .env for OpenAI Compatible endpoint.")
+
+        # 从环境变量获取 API Key (可选, 取决于端点是否需要认证)
+        # 为方便起见，可以复用 OPENAI_API_KEY，或者定义一个特定的变量如 OPENAI_COMPATIBLE_API_KEY
+        api_key = os.getenv("OPENAI_API_KEY") 
+
+        # 从环境变量获取实际的模型名称 (可选但推荐)
+        # 如果未设置 OPENAI_COMPATIBLE_MODEL_NAME，则使用传入的 model_name (即占位符 "custom_openai_compatible_model")
+        actual_model_name = os.getenv("OPENAI_COMPATIBLE_MODEL_NAME", model_name) 
+        
+        # 打印使用的配置信息
+        print(f"{Fore.YELLOW}Using OpenAI Compatible Endpoint:")
+        print(f"  Base URL: {api_base}")
+        print(f"  Model Name: {actual_model_name}")
+        print(f"  API Key: {'Provided' if api_key else 'Not Provided'}{Style.RESET_ALL}")
+
+        # 使用获取到的配置初始化 ChatOpenAI
+        try:
+            # 注意: 根据 langchain-openai 版本，参数可能是 base_url/api_key 或 openai_api_base/openai_api_key
+            # 假设使用较新版本，参数为 base_url 和 api_key
+            llm_params = {
+                "model": actual_model_name,
+                "base_url": api_base,
+            }
+            # 如果 API Key 存在，则添加到参数中
+            if api_key:
+                llm_params["api_key"] = api_key
+                
+            # 创建 ChatOpenAI 实例
+            return ChatOpenAI(**llm_params)
+        except Exception as e:
+            # 如果初始化失败，打印错误并重新抛出异常
+            print(f"{Fore.RED}Error initializing ChatOpenAI for compatible endpoint: {e}{Style.RESET_ALL}")
+            raise
+
+    # 如果没有匹配的 provider，可以返回 None 或抛出错误
+    print(f"{Fore.RED}Error: Unsupported model provider '{model_provider}'.{Style.RESET_ALL}")
+    return None
