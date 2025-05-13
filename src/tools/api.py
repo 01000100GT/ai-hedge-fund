@@ -2,6 +2,10 @@ import datetime
 import os
 import pandas as pd
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+import time
+from typing import Dict, Any, Optional, List
 
 from src.data.cache import get_cache
 from src.data.models import (
@@ -21,9 +25,35 @@ from src.data.models import (
 # Global cache instance
 _cache = get_cache()
 
+# --- 配置带重试的 HTTP 会话 ---
+# 创建一个 Session 对象
+_session = requests.Session()
+
+# 定义重试策略
+# total=5: 总共重试 5 次
+# backoff_factor=1: 等待时间因子 (1s, 2s, 4s, 8s, 16s)
+# status_forcelist=[429, 500, 502, 503, 504]: 在这些状态码上触发重试
+# allowed_methods=False: 对所有请求方法都应用重试（或指定 frozenset(['GET', 'POST'])）
+retries = Retry(total=5, 
+                backoff_factor=1, 
+                status_forcelist=[429, 500, 502, 503, 504],
+                allowed_methods=False) # 或者使用 method_whitelist=frozenset(['GET', 'POST'])
+
+# 创建一个 HTTPAdapter 并挂载重试策略
+adapter = HTTPAdapter(max_retries=retries)
+
+# 将适配器挂载到 http:// 和 https://
+_session.mount('http://', adapter)
+_session.mount('https://', adapter)
+
+# 全局设置 API Key (如果存在)，Session 会在所有请求中自动使用它
+if api_key := os.environ.get("FINANCIAL_DATASETS_API_KEY"):
+    _session.headers.update({"X-API-KEY": api_key})
+
+# --- Financial Data API Functions (使用 Session) ---
 
 def get_prices(ticker: str, start_date: str, end_date: str) -> list[Price]:
-    """Fetch price data from cache or API."""
+    """Fetch price data from cache or API using a session with retries."""
     # Check cache first
     if cached_data := _cache.get_prices(ticker):
         # Filter cached data by date range and convert to Price objects
@@ -31,15 +61,17 @@ def get_prices(ticker: str, start_date: str, end_date: str) -> list[Price]:
         if filtered_data:
             return filtered_data
 
-    # If not in cache or no data in range, fetch from API
-    headers = {}
-    if api_key := os.environ.get("FINANCIAL_DATASETS_API_KEY"):
-        headers["X-API-KEY"] = api_key
-
+    # If not in cache or no data in range, fetch from API using the session
+    # 注意: Session 已包含 API Key (如果设置了)
     url = f"https://api.financialdatasets.ai/prices/?ticker={ticker}&interval=day&interval_multiplier=1&start_date={start_date}&end_date={end_date}"
-    response = requests.get(url, headers=headers)
-    if response.status_code != 200:
-        raise Exception(f"Error fetching data: {ticker} - {response.status_code} - {response.text}")
+    try:
+        # 修改: 使用 _session.get 替代 requests.get
+        response = _session.get(url, timeout=30) # 添加 timeout
+        response.raise_for_status() # 检查 HTTP 错误状态码 (4xx, 5xx)
+    except requests.exceptions.RequestException as e:
+        # 处理 requests 相关的异常 (包括重试失败后的最终错误)
+        print(f"Error fetching price data for {ticker} after retries: {e}")
+        raise Exception(f"Error fetching data: {ticker} - {e}") from e
 
     # Parse response with Pydantic model
     price_response = PriceResponse(**response.json())
@@ -59,7 +91,7 @@ def get_financial_metrics(
     period: str = "ttm",
     limit: int = 10,
 ) -> list[FinancialMetrics]:
-    """Fetch financial metrics from cache or API."""
+    """Fetch financial metrics from cache or API using a session with retries."""
     # Check cache first
     if cached_data := _cache.get_financial_metrics(ticker):
         # Filter cached data by date and limit
@@ -68,16 +100,16 @@ def get_financial_metrics(
         if filtered_data:
             return filtered_data[:limit]
 
-    # If not in cache or insufficient data, fetch from API
-    headers = {}
-    if api_key := os.environ.get("FINANCIAL_DATASETS_API_KEY"):
-        headers["X-API-KEY"] = api_key
-
+    # If not in cache or insufficient data, fetch from API using the session
     url = f"https://api.financialdatasets.ai/financial-metrics/?ticker={ticker}&report_period_lte={end_date}&limit={limit}&period={period}"
-    response = requests.get(url, headers=headers)
-    if response.status_code != 200:
-        raise Exception(f"Error fetching data: {ticker} - {response.status_code} - {response.text}")
-
+    try:
+        # 修改: 使用 _session.get 替代 requests.get
+        response = _session.get(url, timeout=30) # 添加 timeout
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching financial metrics for {ticker} after retries: {e}")
+        raise Exception(f"Error fetching data: {ticker} - {e}") from e
+        
     # Parse response with Pydantic model
     metrics_response = FinancialMetricsResponse(**response.json())
     # Return the FinancialMetrics objects directly instead of converting to dict
@@ -98,14 +130,8 @@ def search_line_items(
     period: str = "ttm",
     limit: int = 10,
 ) -> list[LineItem]:
-    """Fetch line items from API."""
-    # If not in cache or insufficient data, fetch from API
-    headers = {}
-    if api_key := os.environ.get("FINANCIAL_DATASETS_API_KEY"):
-        headers["X-API-KEY"] = api_key
-
+    """Fetch line items from API using a session with retries."""
     url = "https://api.financialdatasets.ai/financials/search/line-items"
-
     body = {
         "tickers": [ticker],
         "line_items": line_items,
@@ -113,9 +139,14 @@ def search_line_items(
         "period": period,
         "limit": limit,
     }
-    response = requests.post(url, headers=headers, json=body)
-    if response.status_code != 200:
-        raise Exception(f"Error fetching data: {ticker} - {response.status_code} - {response.text}")
+    try:
+        # 修改: 使用 _session.post 替代 requests.post
+        response = _session.post(url, json=body, timeout=30) # 添加 timeout
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"Error searching line items for {ticker} after retries: {e}")
+        raise Exception(f"Error fetching data: {ticker} - {e}") from e
+        
     data = response.json()
     response_model = LineItemResponse(**data)
     search_results = response_model.search_results
@@ -132,7 +163,7 @@ def get_insider_trades(
     start_date: str | None = None,
     limit: int = 1000,
 ) -> list[InsiderTrade]:
-    """Fetch insider trades from cache or API."""
+    """Fetch insider trades from cache or API using a session with retries."""
     # Check cache first
     if cached_data := _cache.get_insider_trades(ticker):
         # Filter cached data by date range
@@ -142,10 +173,6 @@ def get_insider_trades(
             return filtered_data
 
     # If not in cache or insufficient data, fetch from API
-    headers = {}
-    if api_key := os.environ.get("FINANCIAL_DATASETS_API_KEY"):
-        headers["X-API-KEY"] = api_key
-
     all_trades = []
     current_end_date = end_date
 
@@ -154,10 +181,15 @@ def get_insider_trades(
         if start_date:
             url += f"&filing_date_gte={start_date}"
         url += f"&limit={limit}"
-
-        response = requests.get(url, headers=headers)
-        if response.status_code != 200:
-            raise Exception(f"Error fetching data: {ticker} - {response.status_code} - {response.text}")
+        try:
+            # 修改: 使用 _session.get 替代 requests.get
+            response = _session.get(url, timeout=30) # 添加 timeout
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching insider trades for {ticker} (page ending {current_end_date}) after retries: {e}")
+            # 决定是抛出异常还是返回已获取的部分数据
+            # 这里选择抛出异常，因为分页可能未完成
+            raise Exception(f"Error fetching data: {ticker} - {e}") from e
 
         data = response.json()
         response_model = InsiderTradeResponse(**data)
@@ -193,7 +225,11 @@ def get_company_news(
     start_date: str | None = None,
     limit: int = 1000,
 ) -> list[CompanyNews]:
-    """Fetch company news from cache or API."""
+    """Fetch company news from cache or API using a session with retries."""
+    # 添加: 在每次调用前强制等待 1 秒，进行简单的节流
+    print(f"[API Throttling] Waiting 1 second before fetching news for {ticker}...")
+    time.sleep(1)
+
     # Check cache first
     if cached_data := _cache.get_company_news(ticker):
         # Filter cached data by date range
@@ -203,10 +239,6 @@ def get_company_news(
             return filtered_data
 
     # If not in cache or insufficient data, fetch from API
-    headers = {}
-    if api_key := os.environ.get("FINANCIAL_DATASETS_API_KEY"):
-        headers["X-API-KEY"] = api_key
-
     all_news = []
     current_end_date = end_date
 
@@ -215,11 +247,15 @@ def get_company_news(
         if start_date:
             url += f"&start_date={start_date}"
         url += f"&limit={limit}"
-
-        response = requests.get(url, headers=headers)
-        if response.status_code != 200:
-            raise Exception(f"Error fetching data: {ticker} - {response.status_code} - {response.text}")
-
+        try:
+            # 修改: 使用 _session.get 替代 requests.get
+            response = _session.get(url, timeout=30) # 添加 timeout
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching company news for {ticker} (page ending {current_end_date}) after retries: {e}")
+            # 决定是抛出异常还是返回已获取的部分数据
+            raise Exception(f"Error fetching data: {ticker} - {e}") from e
+            
         data = response.json()
         response_model = CompanyNewsResponse(**data)
         company_news = response_model.news
@@ -252,18 +288,17 @@ def get_market_cap(
     ticker: str,
     end_date: str,
 ) -> float | None:
-    """Fetch market cap from the API."""
+    """Fetch market cap from the API using a session with retries."""
     # Check if end_date is today
     if end_date == datetime.datetime.now().strftime("%Y-%m-%d"):
-        # Get the market cap from company facts API
-        headers = {}
-        if api_key := os.environ.get("FINANCIAL_DATASETS_API_KEY"):
-            headers["X-API-KEY"] = api_key
-
         url = f"https://api.financialdatasets.ai/company/facts/?ticker={ticker}"
-        response = requests.get(url, headers=headers)
-        if response.status_code != 200:
-            print(f"Error fetching company facts: {ticker} - {response.status_code}")
+        try:
+            # 修改: 使用 _session.get 替代 requests.get
+            response = _session.get(url, timeout=30) # 添加 timeout
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching company facts for {ticker} after retries: {e}")
+            # 对于这种单点数据获取，可以考虑返回 None 而不是抛出异常
             return None
 
         data = response.json()
