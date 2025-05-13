@@ -57,7 +57,7 @@ FINANCIAL_DATASETS_API_KEY=your-financial-datasets-api-key
 cd app/backend
 
 # 使用uvicorn启动FastAPI服务器
-poetry run uvicorn main:app --reload
+poetry run uvicorn main:app --reload --port 8090
 ```
 
 这将启动启用了热重载的FastAPI服务器。
