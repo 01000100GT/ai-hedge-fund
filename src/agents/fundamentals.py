@@ -1,3 +1,12 @@
+"""
+基本面分析代理
+该模块实现了基于基本面指标的股票分析系统。主要关注:
+1. 盈利能力分析(ROE、利润率等)
+2. 增长分析(收入、盈利、账面价值增长)
+3. 财务健康度(流动比率、债务权益比等)
+4. 估值比率(市盈率、市净率、市销率等)
+"""
+
 from langchain_core.messages import HumanMessage
 from src.graph.state import AgentState, show_agent_reasoning
 from src.utils.progress import progress
@@ -6,9 +15,16 @@ import json
 from src.tools.api import get_financial_metrics
 
 
-##### Fundamental Agent #####
+##### 基本面分析代理 #####
 def fundamentals_agent(state: AgentState):
-    """Analyzes fundamental data and generates trading signals for multiple tickers."""
+    """
+    分析基本面数据并为多个股票生成交易信号。
+    主要分析四个方面:
+    1. 盈利能力
+    2. 增长性
+    3. 财务健康
+    4. 估值水平
+    """
     data = state["data"]
     end_date = data["end_date"]
     tickers = data["tickers"]

@@ -1,3 +1,18 @@
+"""
+查理·芒格投资策略分析代理
+该模块实现了基于芒格投资原则和思维模型的股票分析系统。主要关注:
+1. 关注业务质量和可预测性
+2. 利用多学科思维模型分析投资
+3. 寻找强大、持久的竞争优势(护城河)
+4. 强调长期思维和耐心
+5. 重视管理层诚信和能力
+6. 优先考虑投资资本回报率高的企业
+7. 为优质企业支付合理价格
+8. 永远不要高估,始终要求安全边际
+9. 避免复杂性和你不理解的业务
+10. "反向思考,永远反向思考" - 专注于避免愚蠢而不是追求聪明
+"""
+
 from src.graph.state import AgentState, show_agent_reasoning
 from src.tools.api import get_financial_metrics, get_market_cap, search_line_items, get_insider_trades, get_company_news
 from langchain_core.prompts import ChatPromptTemplate
@@ -9,6 +24,13 @@ from src.utils.progress import progress
 from src.utils.llm import call_llm
 
 class CharlieMungerSignal(BaseModel):
+    """
+    查理·芒格风格的输出信号容器
+    包含:
+    - signal: 看涨/看跌/中性信号
+    - confidence: 置信度(0-100)
+    - reasoning: 推理说明
+    """
     signal: Literal["bullish", "bearish", "neutral"]
     confidence: float
     reasoning: str
@@ -16,8 +38,8 @@ class CharlieMungerSignal(BaseModel):
 
 def charlie_munger_agent(state: AgentState):
     """
-    Analyzes stocks using Charlie Munger's investing principles and mental models.
-    Focuses on moat strength, management quality, predictability, and valuation.
+    使用查理·芒格的投资原则和思维模型分析股票。
+    重点关注护城河强度、管理质量、可预测性和估值。
     """
     data = state["data"]
     end_date = data["end_date"]
@@ -157,11 +179,11 @@ def charlie_munger_agent(state: AgentState):
 
 def analyze_moat_strength(metrics: list, financial_line_items: list) -> dict:
     """
-    Analyze the business's competitive advantage using Munger's approach:
-    - Consistent high returns on capital (ROIC)
-    - Pricing power (stable/improving gross margins)
-    - Low capital requirements
-    - Network effects and intangible assets (R&D investments, goodwill)
+    使用芒格的方法分析企业的竞争优势:
+    - 持续高资本回报率(ROIC)
+    - 定价能力(稳定/改善的毛利率)
+    - 低资本需求
+    - 网络效应和无形资产(研发投资、商誉)
     """
     score = 0
     details = []
@@ -263,12 +285,12 @@ def analyze_moat_strength(metrics: list, financial_line_items: list) -> dict:
 
 def analyze_management_quality(financial_line_items: list, insider_trades: list) -> dict:
     """
-    Evaluate management quality using Munger's criteria:
-    - Capital allocation wisdom
-    - Insider ownership and transactions
-    - Cash management efficiency
-    - Candor and transparency
-    - Long-term focus
+    使用芒格的标准评估管理质量:
+    - 资本配置智慧
+    - 内部人持股和交易
+    - 现金管理效率
+    - 坦诚和透明度
+    - 长期关注
     """
     score = 0
     details = []
@@ -423,8 +445,8 @@ def analyze_management_quality(financial_line_items: list, insider_trades: list)
 
 def analyze_predictability(financial_line_items: list) -> dict:
     """
-    Assess the predictability of the business - Munger strongly prefers businesses
-    whose future operations and cashflows are relatively easy to predict.
+    评估业务的可预测性 - 芒格强烈偏好那些
+    未来运营和现金流相对容易预测的企业。
     """
     score = 0
     details = []
@@ -541,10 +563,10 @@ def analyze_predictability(financial_line_items: list) -> dict:
 
 def calculate_munger_valuation(financial_line_items: list, market_cap: float) -> dict:
     """
-    Calculate intrinsic value using Munger's approach:
-    - Focus on owner earnings (approximated by FCF)
-    - Simple multiple on normalized earnings
-    - Prefer paying a fair price for a wonderful business
+    使用芒格的方法计算内在价值:
+    - 关注所有者收益(以FCF为近似值)
+    - 对标准化收益使用简单倍数
+    - 倾向于为优质企业支付合理价格
     """
     score = 0
     details = []
@@ -649,8 +671,8 @@ def calculate_munger_valuation(financial_line_items: list, market_cap: float) ->
 
 def analyze_news_sentiment(news_items: list) -> str:
     """
-    Simple qualitative analysis of recent news.
-    Munger pays attention to significant news but doesn't overreact to short-term stories.
+    简单的定性新闻分析。
+    芒格关注重要新闻但不会对短期故事反应过度。
     """
     if not news_items or len(news_items) == 0:
         return "No news data available"
@@ -666,7 +688,7 @@ def generate_munger_output(
     model_provider: str,
 ) -> CharlieMungerSignal:
     """
-    Generates investment decisions in the style of Charlie Munger.
+    以查理·芒格的风格生成投资决策。
     """
     template = ChatPromptTemplate.from_messages([
         (

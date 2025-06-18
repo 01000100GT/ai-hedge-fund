@@ -1,3 +1,13 @@
+"""
+迈克尔·伯里投资策略分析代理
+该模块实现了基于伯里投资理念的股票分析系统。主要关注:
+1. 深度价值投资,寻找被市场严重低估的股票
+2. 逆向投资思维,愿意与市场共识对抗
+3. 详细的财务报表分析,特别关注资产负债表
+4. 寻找触发价值释放的催化剂
+5. 高度关注风险管理和下行保护
+"""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -30,7 +40,13 @@ __all__ = [
 
 
 class MichaelBurrySignal(BaseModel):
-    """Schema returned by the LLM."""
+    """
+    迈克尔·伯里风格的输出信号容器
+    包含:
+    - signal: 看涨/看跌/中性信号
+    - confidence: 置信度(0-100)
+    - reasoning: 推理说明
+    """
 
     signal: Literal["bullish", "bearish", "neutral"]
     confidence: float  # 0–100
@@ -43,7 +59,10 @@ class MichaelBurrySignal(BaseModel):
 
 
 def michael_burry_agent(state: AgentState):  # noqa: C901  (complexity is fine here)
-    """Analyse stocks using Michael Burry's deep‑value, contrarian framework."""
+    """
+    使用迈克尔·伯里的投资原则分析股票。
+    重点关注深度价值、逆向思维、资产负债表分析和催化剂。
+    """
 
     data = state["data"]
     end_date: str = data["end_date"]  # YYYY‑MM‑DD
@@ -174,14 +193,22 @@ def michael_burry_agent(state: AgentState):  # noqa: C901  (complexity is fine h
 
 
 def _latest_line_item(line_items: list):
-    """Return the most recent line‑item object or *None*."""
+    """
+    获取最新的财务数据项。
+    """
     return line_items[0] if line_items else None
 
 
 # ----- Value ----------------------------------------------------------------
 
 def _analyze_value(metrics, line_items, market_cap):
-    """Free cash‑flow yield, EV/EBIT, other classic deep‑value metrics."""
+    """
+    伯里风格的价值分析:
+    - 寻找严重低估的股票
+    - 关注有形账面价值
+    - 分析清算价值
+    - 评估盈利能力和现金流
+    """
 
     max_score = 6  # 4 pts for FCF‑yield, 2 pts for EV/EBIT
     score = 0
@@ -229,7 +256,13 @@ def _analyze_value(metrics, line_items, market_cap):
 # ----- Balance sheet --------------------------------------------------------
 
 def _analyze_balance_sheet(metrics, line_items):
-    """Leverage and liquidity checks."""
+    """
+    伯里式资产负债表分析:
+    - 详细审查资产质量
+    - 评估负债结构
+    - 分析营运资本
+    - 寻找隐藏的价值或风险
+    """
 
     max_score = 3
     score = 0
@@ -270,7 +303,12 @@ def _analyze_balance_sheet(metrics, line_items):
 # ----- Insider activity -----------------------------------------------------
 
 def _analyze_insider_activity(insider_trades):
-    """Net insider buying over the last 12 months acts as a hard catalyst."""
+    """
+    分析内部人交易活动:
+    - 评估管理层的信心
+    - 识别重要的买入/卖出模式
+    - 考虑交易的时机和规模
+    """
 
     max_score = 2
     score = 0
@@ -295,7 +333,12 @@ def _analyze_insider_activity(insider_trades):
 # ----- Contrarian sentiment -------------------------------------------------
 
 def _analyze_contrarian_sentiment(news):
-    """Very rough gauge: a wall of recent negative headlines can be a *positive* for a contrarian."""
+    """
+    逆向情绪分析:
+    - 寻找过度悲观的市场情绪
+    - 识别被误解的负面新闻
+    - 评估市场共识的可能错误
+    """
 
     max_score = 1
     score = 0
@@ -330,7 +373,10 @@ def _generate_burry_output(
     model_name: str,
     model_provider: str,
 ) -> MichaelBurrySignal:
-    """Call the LLM to craft the final trading signal in Burry's voice."""
+    """
+    以迈克尔·伯里的风格生成投资决策。
+    强调深度价值、逆向思维和催化剂分析。
+    """
 
     template = ChatPromptTemplate.from_messages(
         [

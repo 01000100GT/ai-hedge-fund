@@ -1,3 +1,13 @@
+"""
+投资组合管理代理
+
+该模块负责:
+1. 整合各个分析师的投资信号
+2. 根据风险限制和当前持仓做出最终交易决策
+3. 生成具体的交易订单
+4. 管理投资组合的整体风险和收益
+"""
+
 import json
 from langchain_core.messages import HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
@@ -10,19 +20,42 @@ from src.utils.llm import call_llm
 
 
 class PortfolioDecision(BaseModel):
+    """
+    投资组合交易决策模型
+    
+    属性:
+        action: 交易动作 - 买入/卖出/做空/回补/持有
+        quantity: 交易数量(股数)
+        confidence: 决策信心水平(0-100)
+        reasoning: 决策理由说明
+    """
     action: Literal["buy", "sell", "short", "cover", "hold"]
-    quantity: int = Field(description="Number of shares to trade")
-    confidence: float = Field(description="Confidence in the decision, between 0.0 and 100.0")
-    reasoning: str = Field(description="Reasoning for the decision")
+    quantity: int = Field(description="交易股数")
+    confidence: float = Field(description="决策信心水平,介于0.0和100.0之间")
+    reasoning: str = Field(description="决策理由说明")
 
 
 class PortfolioManagerOutput(BaseModel):
-    decisions: dict[str, PortfolioDecision] = Field(description="Dictionary of ticker to trading decisions")
+    """
+    投资组合管理输出模型
+    
+    属性:
+        decisions: 股票代码到交易决策的映射字典
+    """
+    decisions: dict[str, PortfolioDecision] = Field(description="股票代码到交易决策的映射字典")
 
 
 ##### Portfolio Management Agent #####
 def portfolio_management_agent(state: AgentState):
-    """Makes final trading decisions and generates orders for multiple tickers"""
+    """
+    投资组合管理代理主函数
+    
+    为多个股票生成最终交易决策和订单。主要职责:
+    1. 获取投资组合状态和分析师信号
+    2. 获取每只股票的仓位限制、当前价格和信号
+    3. 根据各种因素生成交易决策
+    4. 输出详细的决策理由
+    """
 
     # Get the portfolio and analyst signals
     portfolio = state["data"]["portfolio"]
@@ -93,7 +126,21 @@ def generate_trading_decision(
     model_name: str,
     model_provider: str,
 ) -> PortfolioManagerOutput:
-    """Attempts to get a decision from the LLM with retry logic"""
+    """
+    尝试从LLM获取交易决策,包含重试逻辑
+    
+    参数:
+        tickers: 股票代码列表
+        signals_by_ticker: 每只股票的信号字典
+        current_prices: 当前价格字典
+        max_shares: 最大可交易股数字典
+        portfolio: 投资组合状态
+        model_name: 模型名称
+        model_provider: 模型提供商
+        
+    返回:
+        包含每只股票交易决策的PortfolioManagerOutput对象
+    """
     # Create the prompt template
     template = ChatPromptTemplate.from_messages(
         [

@@ -1,3 +1,16 @@
+"""
+菲利普·费雪投资策略代理
+
+该模块实现了基于菲利普·费雪投资原则的股票分析系统。
+费雪强调:
+1. 寻找具有长期高于平均水平增长潜力的公司
+2. 重视管理质量和研发投入
+3. 关注强劲的利润率、持续增长和可控的杠杆
+4. 结合基本面"口碑调查"方法与基本情绪和内部交易数据
+5. 愿意为优质公司支付溢价,但仍注意估值
+6. 通常专注于长期复利增长
+"""
+
 from src.graph.state import AgentState, show_agent_reasoning
 from src.tools.api import (
     get_financial_metrics,
@@ -17,6 +30,14 @@ import statistics
 
 
 class PhilFisherSignal(BaseModel):
+    """
+    菲利普·费雪投资信号模型
+    
+    属性:
+        signal: 投资信号 - 看涨/看跌/中性
+        confidence: 信心水平 0-100
+        reasoning: 决策理由说明
+    """
     signal: Literal["bullish", "bearish", "neutral"]
     confidence: float
     reasoning: str
@@ -24,15 +45,17 @@ class PhilFisherSignal(BaseModel):
 
 def phil_fisher_agent(state: AgentState):
     """
-    Analyzes stocks using Phil Fisher's investing principles:
-      - Seek companies with long-term above-average growth potential
-      - Emphasize quality of management and R&D
-      - Look for strong margins, consistent growth, and manageable leverage
-      - Combine fundamental 'scuttlebutt' style checks with basic sentiment and insider data
-      - Willing to pay up for quality, but still mindful of valuation
-      - Generally focuses on long-term compounding
+    费雪投资策略代理主函数
+    
+    使用菲利普·费雪的投资原则分析股票:
+    - 寻找长期高于平均水平增长潜力的公司
+    - 重视管理质量和研发投入
+    - 关注强劲的利润率、持续增长和可控的杠杆
+    - 结合基本面"口碑调查"方法与基本情绪和内部交易数据
+    - 愿意为优质公司支付溢价,但仍注意估值
+    - 通常专注于长期复利增长
 
-    Returns a bullish/bearish/neutral signal with confidence and reasoning.
+    返回带有信心水平和理由说明的看涨/看跌/中性信号。
     """
     data = state["data"]
     start_date = data["start_date"]
@@ -167,10 +190,10 @@ def phil_fisher_agent(state: AgentState):
 
 def analyze_fisher_growth_quality(financial_line_items: list) -> dict:
     """
-    Evaluate growth & quality:
-      - Consistent Revenue Growth
-      - Consistent EPS Growth
-      - R&D as a % of Revenue (if relevant, indicative of future-oriented spending)
+    评估增长和质量:
+    - 持续的收入增长
+    - 持续的每股收益增长
+    - 研发支出占收入比例(如果相关,表明面向未来的投入)
     """
     if not financial_line_items or len(financial_line_items) < 2:
         return {
@@ -258,7 +281,7 @@ def analyze_fisher_growth_quality(financial_line_items: list) -> dict:
 
 def analyze_margins_stability(financial_line_items: list) -> dict:
     """
-    Looks at margin consistency (gross/operating margin) and general stability over time.
+    分析利润率的一致性(毛利率/营业利润率)和整体稳定性。
     """
     if not financial_line_items or len(financial_line_items) < 2:
         return {
@@ -324,10 +347,10 @@ def analyze_margins_stability(financial_line_items: list) -> dict:
 
 def analyze_management_efficiency_leverage(financial_line_items: list) -> dict:
     """
-    Evaluate management efficiency & leverage:
-      - Return on Equity (ROE)
-      - Debt-to-Equity ratio
-      - Possibly check if free cash flow is consistently positive
+    评估管理效率和杠杆:
+    - 股本回报率(ROE)
+    - 债务权益比
+    - 检查自由现金流是否持续为正
     """
     if not financial_line_items:
         return {
@@ -400,11 +423,13 @@ def analyze_management_efficiency_leverage(financial_line_items: list) -> dict:
 
 def analyze_fisher_valuation(financial_line_items: list, market_cap: float | None) -> dict:
     """
-    Phil Fisher is willing to pay for quality and growth, but still checks:
-      - P/E
-      - P/FCF
-      - (Optionally) Enterprise Value metrics, but simpler approach is typical
-    We will grant up to 2 points for each of two metrics => max 4 raw => scale to 0–10.
+    费雪风格的估值分析
+    
+    费雪愿意为增长付费,但仍会检查:
+    - 市盈率(P/E)
+    - 市现率(P/FCF)
+    - (可选)企业价值相关指标,但通常采用更简单的方法
+    每个指标最多2分 => 最高4分原始分 => 换算为0-10分。
     """
     if not financial_line_items or market_cap is None:
         return {"score": 0, "details": "Insufficient data to perform valuation"}
@@ -457,10 +482,10 @@ def analyze_fisher_valuation(financial_line_items: list, market_cap: float | Non
 
 def analyze_insider_activity(insider_trades: list) -> dict:
     """
-    Simple insider-trade analysis:
-      - If there's heavy insider buying, we nudge the score up.
-      - If there's mostly selling, we reduce it.
-      - Otherwise, neutral.
+    简单的内部交易分析:
+    - 如果有大量内部人员买入,提高得分
+    - 如果主要是卖出,降低得分
+    - 否则保持中性
     """
     # Default is neutral (5/10).
     score = 5
@@ -499,7 +524,8 @@ def analyze_insider_activity(insider_trades: list) -> dict:
 
 def analyze_sentiment(news_items: list) -> dict:
     """
-    Basic news sentiment: negative keyword check vs. overall volume.
+    基本新闻情绪分析:
+    对比负面关键词检查与整体新闻量。
     """
     if not news_items:
         return {"score": 5, "details": "No news data; defaulting to neutral sentiment"}
@@ -532,7 +558,7 @@ def generate_fisher_output(
     model_provider: str,
 ) -> PhilFisherSignal:
     """
-    Generates a JSON signal in the style of Phil Fisher.
+    生成费雪风格的JSON格式投资信号。
     """
     template = ChatPromptTemplate.from_messages(
         [

@@ -1,3 +1,14 @@
+"""
+技术分析代理
+
+该模块实现了一个复杂的技术分析系统,结合多个交易策略:
+1. 趋势跟踪
+2. 均值回归
+3. 动量策略
+4. 波动性分析
+5. 统计套利信号
+"""
+
 import math
 
 from langchain_core.messages import HumanMessage
@@ -15,12 +26,14 @@ from src.utils.progress import progress
 ##### Technical Analyst #####
 def technical_analyst_agent(state: AgentState):
     """
-    Sophisticated technical analysis system that combines multiple trading strategies for multiple tickers:
-    1. Trend Following
-    2. Mean Reversion
-    3. Momentum
-    4. Volatility Analysis
-    5. Statistical Arbitrage Signals
+    技术分析代理主函数
+    
+    结合多个交易策略为多个股票生成技术分析信号:
+    1. 趋势跟踪 - 使用多个时间周期的均线和ADX
+    2. 均值回归 - 使用统计指标和布林带
+    3. 动量策略 - 多因子动量分析
+    4. 波动性分析 - 基于波动率的交易策略
+    5. 统计套利信号 - 基于价格行为的统计分析
     """
     data = state["data"]
     start_date = data["start_date"]
@@ -137,7 +150,10 @@ def technical_analyst_agent(state: AgentState):
 
 def calculate_trend_signals(prices_df):
     """
-    Advanced trend following strategy using multiple timeframes and indicators
+    高级趋势跟踪策略,使用多个时间周期和指标:
+    - 多个时间周期的EMA
+    - ADX趋势强度指标
+    - 趋势方向和强度评估
     """
     # Calculate EMAs for multiple timeframes
     ema_8 = calculate_ema(prices_df, 8)
@@ -176,7 +192,10 @@ def calculate_trend_signals(prices_df):
 
 def calculate_mean_reversion_signals(prices_df):
     """
-    Mean reversion strategy using statistical measures and Bollinger Bands
+    均值回归策略,使用统计指标和布林带:
+    - 相对于移动平均的z-score
+    - 布林带位置
+    - 多个时间周期的RSI
     """
     # Calculate z-score of price relative to moving average
     ma_50 = prices_df["close"].rolling(window=50).mean()
@@ -218,7 +237,10 @@ def calculate_mean_reversion_signals(prices_df):
 
 def calculate_momentum_signals(prices_df):
     """
-    Multi-factor momentum strategy
+    多因子动量策略:
+    - 价格动量
+    - 成交量动量
+    - 相对强度
     """
     # Price momentum
     returns = prices_df["close"].pct_change()
@@ -263,7 +285,11 @@ def calculate_momentum_signals(prices_df):
 
 def calculate_volatility_signals(prices_df):
     """
-    Volatility-based trading strategy
+    基于波动率的交易策略:
+    - 历史波动率
+    - 波动率状态检测
+    - 波动率均值回归
+    - ATR比率
     """
     # Calculate various volatility metrics
     returns = prices_df["close"].pct_change()
@@ -310,7 +336,11 @@ def calculate_volatility_signals(prices_df):
 
 def calculate_stat_arb_signals(prices_df):
     """
-    Statistical arbitrage signals based on price action analysis
+    基于价格行为的统计套利信号:
+    - 价格分布统计
+    - 偏度和峰度
+    - 使用Hurst指数测试均值回归
+    - 相关性分析
     """
     # Calculate price distribution statistics
     returns = prices_df["close"].pct_change()
@@ -349,7 +379,7 @@ def calculate_stat_arb_signals(prices_df):
 
 def weighted_signal_combination(signals, weights):
     """
-    Combines multiple trading signals using a weighted approach
+    使用加权方法组合多个交易信号
     """
     # Convert signals to numeric values
     signal_values = {"bullish": 1, "neutral": 0, "bearish": -1}
@@ -383,7 +413,9 @@ def weighted_signal_combination(signals, weights):
 
 
 def normalize_pandas(obj):
-    """Convert pandas Series/DataFrames to primitive Python types"""
+    """
+    将pandas Series/DataFrame转换为原始Python类型
+    """
     if isinstance(obj, pd.Series):
         return obj.tolist()
     elif isinstance(obj, pd.DataFrame):
@@ -396,6 +428,9 @@ def normalize_pandas(obj):
 
 
 def calculate_rsi(prices_df: pd.DataFrame, period: int = 14) -> pd.Series:
+    """
+    计算相对强弱指标(RSI)
+    """
     delta = prices_df["close"].diff()
     gain = (delta.where(delta > 0, 0)).fillna(0)
     loss = (-delta.where(delta < 0, 0)).fillna(0)
@@ -407,6 +442,9 @@ def calculate_rsi(prices_df: pd.DataFrame, period: int = 14) -> pd.Series:
 
 
 def calculate_bollinger_bands(prices_df: pd.DataFrame, window: int = 20) -> tuple[pd.Series, pd.Series]:
+    """
+    计算布林带
+    """
     sma = prices_df["close"].rolling(window).mean()
     std_dev = prices_df["close"].rolling(window).std()
     upper_band = sma + (std_dev * 2)
@@ -416,28 +454,28 @@ def calculate_bollinger_bands(prices_df: pd.DataFrame, window: int = 20) -> tupl
 
 def calculate_ema(df: pd.DataFrame, window: int) -> pd.Series:
     """
-    Calculate Exponential Moving Average
-
-    Args:
-        df: DataFrame with price data
-        window: EMA period
-
-    Returns:
-        pd.Series: EMA values
+    计算指数移动平均线(EMA)
+    
+    参数:
+        df: 包含价格数据的DataFrame
+        window: EMA周期
+        
+    返回:
+        pd.Series: EMA值序列
     """
     return df["close"].ewm(span=window, adjust=False).mean()
 
 
 def calculate_adx(df: pd.DataFrame, period: int = 14) -> pd.DataFrame:
     """
-    Calculate Average Directional Index (ADX)
-
-    Args:
-        df: DataFrame with OHLC data
-        period: Period for calculations
-
-    Returns:
-        DataFrame with ADX values
+    计算平均趋向指标(ADX)
+    
+    参数:
+        df: 包含OHLC数据的DataFrame
+        period: 计算周期
+        
+    返回:
+        包含ADX值的DataFrame
     """
     # Calculate True Range
     df["high_low"] = df["high"] - df["low"]
@@ -463,14 +501,14 @@ def calculate_adx(df: pd.DataFrame, period: int = 14) -> pd.DataFrame:
 
 def calculate_atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
     """
-    Calculate Average True Range
-
-    Args:
-        df: DataFrame with OHLC data
-        period: Period for ATR calculation
-
-    Returns:
-        pd.Series: ATR values
+    计算平均真实波幅(ATR)
+    
+    参数:
+        df: 包含OHLC数据的DataFrame
+        period: ATR计算周期
+        
+    返回:
+        pd.Series: ATR值序列
     """
     high_low = df["high"] - df["low"]
     high_close = abs(df["high"] - df["close"].shift())
@@ -484,17 +522,17 @@ def calculate_atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
 
 def calculate_hurst_exponent(price_series: pd.Series, max_lag: int = 20) -> float:
     """
-    Calculate Hurst Exponent to determine long-term memory of time series
-    H < 0.5: Mean reverting series
-    H = 0.5: Random walk
-    H > 0.5: Trending series
-
-    Args:
-        price_series: Array-like price data
-        max_lag: Maximum lag for R/S calculation
-
-    Returns:
-        float: Hurst exponent
+    计算Hurst指数以确定时间序列的长期记忆性
+    H < 0.5: 均值回归序列
+    H = 0.5: 随机游走
+    H > 0.5: 趋势序列
+    
+    参数:
+        price_series: 价格数据序列
+        max_lag: R/S计算的最大滞后期
+        
+    返回:
+        float: Hurst指数
     """
     lags = range(2, max_lag)
     # Add small epsilon to avoid log(0)

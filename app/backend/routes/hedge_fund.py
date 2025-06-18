@@ -1,3 +1,7 @@
+"""
+对冲基金路由模块
+处理对冲基金相关的API端点，包括运行模拟和获取结果
+"""
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 import asyncio
@@ -8,52 +12,58 @@ from app.backend.services.graphy import create_graph, parse_hedge_fund_response,
 from app.backend.services.portfolio import create_portfolio
 from src.utils.progress import progress
 
+# 创建路由器实例
 router = APIRouter(prefix="/hedge-fund")
 
 
 @router.post(
     path="/run",
     responses={
-        200: {"description": "Successful response with streaming updates"},
-        400: {"model": ErrorResponse, "description": "Invalid request parameters"},
-        500: {"model": ErrorResponse, "description": "Internal server error"},
+        200: {"description": "成功响应并返回流式更新"},
+        400: {"model": ErrorResponse, "description": "无效的请求参数"},
+        500: {"model": ErrorResponse, "description": "服务器内部错误"},
     },
 )
 async def run_hedge_fund(request: HedgeFundRequest):
+    """
+    运行对冲基金模拟
+    
+    处理对冲基金模拟请求，返回SSE流式响应，包含进度更新和最终结果
+    """
     try:
-        # Get the start date if not provided
+        # 如果未提供则获取开始日期
         start_date = request.get_start_date()
 
-        # Create the portfolio
+        # 创建投资组合
         portfolio = create_portfolio(request.initial_cash, request.margin_requirement, request.tickers)
 
-        # Construct agent graph
+        # 构建代理图
         graph = create_graph(request.selected_agents)
         graph = graph.compile()
 
-        # Log a test progress update for debugging
-        progress.update_status("system", None, "Preparing hedge fund run")
+        # 记录系统状态更新
+        progress.update_status("system", None, "准备运行对冲基金模拟")
 
-        # Convert model_provider to string if it's an enum
+        # 将model_provider转换为字符串（如果是枚举）
         model_provider = request.model_provider
         if hasattr(model_provider, "value"):
             model_provider = model_provider.value
 
-        # Set up streaming response
+        # 设置流式响应
         async def event_generator():
-            # Queue for progress updates
+            # 进度更新队列
             progress_queue = asyncio.Queue()
 
-            # Simple handler to add updates to the queue
+            # 简单的处理器用于将更新添加到队列
             def progress_handler(agent_name, ticker, status):
                 event = ProgressUpdateEvent(agent=agent_name, ticker=ticker, status=status)
                 progress_queue.put_nowait(event)
 
-            # Register our handler with the progress tracker
+            # 在进度跟踪器中注册处理器
             progress.register_handler(progress_handler)
 
             try:
-                # Start the graph execution in a background task
+                # 在后台任务中启动图执行
                 run_task = asyncio.create_task(
                     run_graph_async(
                         graph=graph,
@@ -65,27 +75,27 @@ async def run_hedge_fund(request: HedgeFundRequest):
                         model_provider=model_provider,
                     )
                 )
-                # Send initial message
+                # 发送初始消息
                 yield StartEvent().to_sse()
 
-                # Stream progress updates until run_task completes
+                # 流式传输进度更新直到run_task完成
                 while not run_task.done():
-                    # Either get a progress update or wait a bit
+                    # 获取进度更新或等待
                     try:
                         event = await asyncio.wait_for(progress_queue.get(), timeout=1.0)
                         yield event.to_sse()
                     except asyncio.TimeoutError:
-                        # Just continue the loop
+                        # 继续循环
                         pass
 
-                # Get the final result
+                # 获取最终结果
                 result = run_task.result()
 
                 if not result or not result.get("messages"):
-                    yield ErrorEvent(message="Failed to generate hedge fund decisions").to_sse()
+                    yield ErrorEvent(message="生成对冲基金决策失败").to_sse()
                     return
 
-                # Send the final result
+                # 发送最终结果
                 final_data = CompleteEvent(
                     data={
                         "decisions": parse_hedge_fund_response(result.get("messages", [])[-1].content),
@@ -95,15 +105,15 @@ async def run_hedge_fund(request: HedgeFundRequest):
                 yield final_data.to_sse()
 
             finally:
-                # Clean up
+                # 清理
                 progress.unregister_handler(progress_handler)
                 if "run_task" in locals() and not run_task.done():
                     run_task.cancel()
 
-        # Return a streaming response
+        # 返回流式响应
         return StreamingResponse(event_generator(), media_type="text/event-stream")
 
     except HTTPException as e:
         raise e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An error occurred while processing the request: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"处理请求时发生错误: {str(e)}")

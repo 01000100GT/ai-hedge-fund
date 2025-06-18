@@ -1,3 +1,12 @@
+"""
+本杰明·格雷厄姆投资策略分析代理
+该模块实现了基于格雷厄姆价值投资理念的股票分析系统。主要关注:
+1. 多年的盈利稳定性
+2. 良好的财务实力(低债务、充足流动性)
+3. 相对于内在价值的折价(如格雷厄姆数或净净值)
+4. 充足的安全边际
+"""
+
 from src.graph.state import AgentState, show_agent_reasoning
 from src.tools.api import get_financial_metrics, get_market_cap, search_line_items
 from langchain_core.prompts import ChatPromptTemplate
@@ -11,6 +20,13 @@ import math
 
 
 class BenGrahamSignal(BaseModel):
+    """
+    本杰明·格雷厄姆风格的输出信号容器
+    包含:
+    - signal: 看涨/看跌/中性信号
+    - confidence: 置信度(0-100)
+    - reasoning: 推理说明
+    """
     signal: Literal["bullish", "bearish", "neutral"]
     confidence: float
     reasoning: str
@@ -18,11 +34,11 @@ class BenGrahamSignal(BaseModel):
 
 def ben_graham_agent(state: AgentState):
     """
-    Analyzes stocks using Benjamin Graham's classic value-investing principles:
-    1. Earnings stability over multiple years.
-    2. Solid financial strength (low debt, adequate liquidity).
-    3. Discount to intrinsic value (e.g. Graham Number or net-net).
-    4. Adequate margin of safety.
+    使用本杰明·格雷厄姆的经典价值投资原则分析股票:
+    1. 多年的盈利稳定性
+    2. 良好的财务实力(低债务、充足流动性)
+    3. 相对于内在价值的折价(如格雷厄姆数或净净值)
+    4. 充足的安全边际
     """
     data = state["data"]
     end_date = data["end_date"]
@@ -92,10 +108,10 @@ def ben_graham_agent(state: AgentState):
 
 def analyze_earnings_stability(metrics: list, financial_line_items: list) -> dict:
     """
-    Graham wants at least several years of consistently positive earnings (ideally 5+).
-    We'll check:
-    1. Number of years with positive EPS.
-    2. Growth in EPS from first to last period.
+    格雷厄姆要求至少几年持续正盈利(理想情况下5年以上)。
+    检查:
+    1. 正EPS年数
+    2. 从第一个到最后一个期间的EPS增长
     """
     score = 0
     details = []
@@ -136,8 +152,8 @@ def analyze_earnings_stability(metrics: list, financial_line_items: list) -> dic
 
 def analyze_financial_strength(financial_line_items: list) -> dict:
     """
-    Graham checks liquidity (current ratio >= 2), manageable debt,
-    and dividend record (preferably some history of dividends).
+    格雷厄姆检查流动性(流动比率>=2)、可控债务、
+    和股息记录(最好有一些股息历史)。
     """
     score = 0
     details = []
@@ -202,10 +218,10 @@ def analyze_financial_strength(financial_line_items: list) -> dict:
 
 def analyze_valuation_graham(financial_line_items: list, market_cap: float) -> dict:
     """
-    Core Graham approach to valuation:
-    1. Net-Net Check: (Current Assets - Total Liabilities) vs. Market Cap
-    2. Graham Number: sqrt(22.5 * EPS * Book Value per Share)
-    3. Compare per-share price to Graham Number => margin of safety
+    格雷厄姆的核心估值方法:
+    1. 净净值检查: (流动资产 - 总负债) vs 市值
+    2. 格雷厄姆数: sqrt(22.5 * EPS * 每股账面价值)
+    3. 比较每股价格与格雷厄姆数 => 安全边际
     """
     if not financial_line_items or not market_cap or market_cap <= 0:
         return {"score": 0, "details": "Insufficient data to perform valuation"}
@@ -282,9 +298,9 @@ def generate_graham_output(
     model_provider: str,
 ) -> BenGrahamSignal:
     """
-    Generates an investment decision in the style of Benjamin Graham:
-    - Value emphasis, margin of safety, net-nets, conservative balance sheet, stable earnings.
-    - Return the result in a JSON structure: { signal, confidence, reasoning }.
+    以本杰明·格雷厄姆的风格生成投资决策:
+    - 重视价值、安全边际、净净值、保守的资产负债表、稳定的收益
+    - 返回JSON结构: { signal, confidence, reasoning }
     """
 
     template = ChatPromptTemplate.from_messages(

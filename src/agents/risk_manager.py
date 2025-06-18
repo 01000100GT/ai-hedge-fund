@@ -1,3 +1,13 @@
+"""
+风险管理代理
+
+该模块负责:
+1. 基于实际风险因素控制多个股票的仓位规模
+2. 计算每只股票的风险限额
+3. 监控投资组合的整体风险水平
+4. 确保风险敞口在可接受范围内
+"""
+
 from langchain_core.messages import HumanMessage
 from src.graph.state import AgentState, show_agent_reasoning
 from src.utils.progress import progress
@@ -7,7 +17,16 @@ import json
 
 ##### Risk Management Agent #####
 def risk_management_agent(state: AgentState):
-    """Controls position sizing based on real-world risk factors for multiple tickers."""
+    """
+    风险管理代理主函数
+    
+    基于实际风险因素控制多个股票的仓位规模。主要职责:
+    1. 获取并分析价格数据
+    2. 计算投资组合价值
+    3. 设定单个持仓限额(不超过组合20%)
+    4. 考虑现有持仓计算剩余可用额度
+    5. 确保不超过可用现金
+    """
     portfolio = state["data"]["portfolio"]
     data = state["data"]
     tickers = data["tickers"]

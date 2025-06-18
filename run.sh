@@ -1,40 +1,40 @@
 #!/bin/bash
 
-# Help text to display when --help is provided
+# 当提供 --help 参数时显示的帮助文本
 show_help() {
-  echo "AI Hedge Fund Docker Runner"
+  echo "AI 对冲基金 Docker 运行器"
   echo ""
-  echo "Usage: ./run.sh [OPTIONS] COMMAND"
+  echo "用法: ./run.sh [选项] 命令"
   echo ""
-  echo "Options:"
-  echo "  --ticker SYMBOLS    Comma-separated list of ticker symbols (e.g., AAPL,MSFT,NVDA)"
-  echo "  --start-date DATE   Start date in YYYY-MM-DD format"
-  echo "  --end-date DATE     End date in YYYY-MM-DD format"
-  echo "  --initial-cash AMT  Initial cash position (default: 100000.0)"
-  echo "  --margin-requirement RATIO  Margin requirement ratio (default: 0.0)"
-  echo "  --ollama            Use Ollama for local LLM inference"
-  echo "  --show-reasoning    Show reasoning from each agent"
+  echo "选项:"
+  echo "  --ticker SYMBOLS    股票代码列表，用逗号分隔 (例如: AAPL,MSFT,NVDA)"
+  echo "  --start-date DATE   开始日期，格式为 YYYY-MM-DD"
+  echo "  --end-date DATE     结束日期，格式为 YYYY-MM-DD"
+  echo "  --initial-cash AMT  初始现金金额 (默认: 100000.0)"
+  echo "  --margin-requirement RATIO  保证金要求比率 (默认: 0.0)"
+  echo "  --ollama            使用 Ollama 进行本地 LLM 推理"
+  echo "  --show-reasoning    显示每个代理的推理过程"
   echo ""
-  echo "Commands:"
-  echo "  main                Run the main hedge fund application"
-  echo "  backtest            Run the backtester"
-  echo "  build               Build the Docker image"
-  echo "  compose             Run using Docker Compose with integrated Ollama"
-  echo "  ollama              Start only the Ollama container for model management"
-  echo "  pull MODEL          Pull a specific model into the Ollama container"
-  echo "  help                Show this help message"
+  echo "命令:"
+  echo "  main                运行主要对冲基金应用"
+  echo "  backtest           运行回测程序"
+  echo "  build              构建 Docker 镜像"
+  echo "  compose            使用 Docker Compose 运行（集成 Ollama）"
+  echo "  ollama             仅启动 Ollama 容器用于模型管理"
+  echo "  pull MODEL         将特定模型下载到 Ollama 容器中"
+  echo "  help               显示此帮助信息"
   echo ""
-  echo "Examples:"
+  echo "示例:"
   echo "  ./run.sh --ticker AAPL,MSFT,NVDA main"
   echo "  ./run.sh --ticker AAPL,MSFT,NVDA --ollama main"
   echo "  ./run.sh --ticker AAPL,MSFT,NVDA --start-date 2024-01-01 --end-date 2024-03-01 backtest"
-  echo "  ./run.sh compose    # Run with Docker Compose (includes Ollama)"
-  echo "  ./run.sh ollama     # Start only the Ollama container"
-  echo "  ./run.sh pull llama3 # Pull the llama3 model to Ollama"
+  echo "  ./run.sh compose    # 使用 Docker Compose 运行（包含 Ollama）"
+  echo "  ./run.sh ollama     # 仅启动 Ollama 容器"
+  echo "  ./run.sh pull llama3 # 将 llama3 模型下载到 Ollama"
   echo ""
 }
 
-# Default values
+# 默认值
 TICKER="AAPL,MSFT,NVDA"
 USE_OLLAMA=""
 START_DATE=""
@@ -45,7 +45,7 @@ SHOW_REASONING=""
 COMMAND=""
 MODEL_NAME=""
 
-# Parse arguments
+# 解析参数
 while [[ $# -gt 0 ]]; do
   case $1 in
     --ticker)
@@ -97,140 +97,140 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Check if command is provided
+# 检查是否提供了命令
 if [ -z "$COMMAND" ]; then
-  echo "Error: No command specified."
+  echo "错误：未指定命令。"
   show_help
   exit 1
 fi
 
-# Show help if 'help' command is provided
+# 如果提供了 'help' 命令则显示帮助
 if [ "$COMMAND" = "help" ]; then
   show_help
   exit 0
 fi
 
-# Check for Docker Compose existence
+# 检查 Docker Compose 是否存在
 if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
-  echo "Error: Docker Compose is not installed."
+  echo "错误：未安装 Docker Compose。"
   exit 1
 fi
 
-# Determine which Docker Compose command to use
+# 确定使用哪个 Docker Compose 命令
 if command -v docker-compose &> /dev/null; then
   COMPOSE_CMD="docker-compose"
 else
   COMPOSE_CMD="docker compose"
 fi
 
-# Detect system architecture for GPU configuration
+# 检测系统架构以配置 GPU
 ARCH=$(uname -m)
 OS=$(uname -s)
 GPU_CONFIG=""
 
-# Set appropriate GPU configuration based on architecture
+# 根据架构设置适当的 GPU 配置
 if [ "$OS" = "Darwin" ] && { [ "$ARCH" = "arm64" ] || [ "$ARCH" = "aarch64" ]; }; then
-  echo "Detected Apple Silicon (M-series) - Metal GPU acceleration should be enabled"
-  # Metal GPU is handled via environment variables in docker-compose.yml
+  echo "检测到 Apple Silicon (M系列) - Metal GPU 加速应该已启用"
+  # Metal GPU 通过 docker-compose.yml 中的环境变量处理
 elif command -v nvidia-smi &> /dev/null; then
-  echo "NVIDIA GPU detected - Adding NVIDIA GPU configuration"
+  echo "检测到 NVIDIA GPU - 添加 NVIDIA GPU 配置"
   GPU_CONFIG="-f docker-compose.yml -f docker-compose.nvidia.yml"
 fi
 
-# Build the Docker image if 'build' command is provided
+# 如果提供了 'build' 命令则构建 Docker 镜像
 if [ "$COMMAND" = "build" ]; then
   docker build -t ai-hedge-fund .
   exit 0
 fi
 
-# Start Ollama container if 'ollama' command is provided
+# 如果提供了 'ollama' 命令则启动 Ollama 容器
 if [ "$COMMAND" = "ollama" ]; then
-  echo "Starting Ollama container..."
+  echo "正在启动 Ollama 容器..."
   $COMPOSE_CMD $GPU_CONFIG up -d ollama
   
-  # Check if Ollama is running
-  echo "Waiting for Ollama to start..."
+  # 检查 Ollama 是否正在运行
+  echo "等待 Ollama 启动..."
   for i in {1..30}; do
     if docker run --rm --network=host curlimages/curl:latest curl -s http://localhost:11434/api/version &> /dev/null; then
-      echo "Ollama is now running."
-      # Show available models
-      echo "Available models:"
+      echo "Ollama 已经启动。"
+      # 显示可用模型
+      echo "可用模型："
       docker exec -t ollama ollama list
       
-      echo -e "\nManage your models using:"
-      echo "  ./run.sh pull <model-name>   # Download a model"
-      echo "  ./run.sh ollama              # Start Ollama and show models"
+      echo -e "\n使用以下命令管理模型："
+      echo "  ./run.sh pull <模型名称>   # 下载模型"
+      echo "  ./run.sh ollama            # 启动 Ollama 并显示模型"
       exit 0
     fi
     echo -n "."
     sleep 1
   done
   
-  echo "Failed to start Ollama within the expected time. You may need to check the container logs."
+  echo "在预期时间内未能启动 Ollama。请检查容器日志。"
   exit 1
 fi
 
-# Pull a model if 'pull' command is provided
+# 如果提供了 'pull' 命令则拉取模型
 if [ "$COMMAND" = "pull" ]; then
   if [ -z "$MODEL_NAME" ]; then
-    echo "Error: No model name specified."
-    echo "Usage: ./run.sh pull <model-name>"
-    echo "Example: ./run.sh pull llama3"
+    echo "错误：未指定模型名称。"
+    echo "用法: ./run.sh pull <模型名称>"
+    echo "示例: ./run.sh pull llama3"
     exit 1
   fi
   
-  # Start Ollama if it's not already running
+  # 如果 Ollama 未运行则启动它
   $COMPOSE_CMD $GPU_CONFIG up -d ollama
   
-  # Wait for Ollama to start
-  echo "Ensuring Ollama is running..."
+  # 等待 Ollama 启动
+  echo "确保 Ollama 正在运行..."
   for i in {1..30}; do
     if docker run --rm --network=host curlimages/curl:latest curl -s http://localhost:11434/api/version &> /dev/null; then
-      echo "Ollama is running."
+      echo "Ollama 正在运行。"
       break
     fi
     echo -n "."
     sleep 1
   done
   
-  # Pull the model
-  echo "Pulling model: $MODEL_NAME"
-  echo "This may take some time depending on the model size and your internet connection."
-  echo "You can press Ctrl+C to cancel at any time (the model will continue downloading in the background)."
+  # 拉取模型
+  echo "正在拉取模型: $MODEL_NAME"
+  echo "这可能需要一些时间，取决于模型大小和您的网络连接。"
+  echo "您可以随时按 Ctrl+C 取消（模型将在后台继续下载）。"
   
   docker exec -t ollama ollama pull "$MODEL_NAME"
   
-  # Check if the model was successfully pulled
+  # 检查模型是否成功拉取
   if docker exec -t ollama ollama list | grep -q "$MODEL_NAME"; then
-    echo "Model $MODEL_NAME was successfully downloaded."
+    echo "模型 $MODEL_NAME 已成功下载。"
   else
-    echo "Warning: Model $MODEL_NAME may not have been properly downloaded."
-    echo "Check the Ollama container status with: ./run.sh ollama"
+    echo "警告：模型 $MODEL_NAME 可能未正确下载。"
+    echo "使用以下命令检查 Ollama 容器状态: ./run.sh ollama"
   fi
   
   exit 0
 fi
 
-# Run with Docker Compose
+# 使用 Docker Compose 运行
 if [ "$COMMAND" = "compose" ]; then
-  echo "Running with Docker Compose (includes Ollama)..."
+  echo "正在使用 Docker Compose 运行（包含 Ollama）..."
   $COMPOSE_CMD $GPU_CONFIG up --build
   exit 0
 fi
 
-# Check if .env file exists, if not create from .env.example
+# 检查 .env 文件是否存在，如果不存在则从 .env.example 创建
 if [ ! -f .env ]; then
   if [ -f .env.example ]; then
-    echo "No .env file found. Creating from .env.example..."
+    echo "未找到 .env 文件。正在从 .env.example 创建..."
     cp .env.example .env
-    echo "Please edit .env file to add your API keys."
+    echo "请编辑 .env 文件以添加您的 API 密钥。"
   else
-    echo "Error: No .env or .env.example file found."
+    echo "错误：未找到 .env 或 .env.example 文件。"
     exit 1
   fi
 fi
 
-# Set script path and parameters based on command
+# 根据命令设置脚本路径和参数
 if [ "$COMMAND" = "main" ]; then
   SCRIPT_PATH="src/main.py"
   if [ "$COMMAND" = "main" ]; then
@@ -243,20 +243,20 @@ elif [ "$COMMAND" = "backtest" ]; then
   fi
 fi
 
-# If using Ollama, make sure the service is started
+# 如果使用 Ollama，确保服务已启动
 if [ -n "$USE_OLLAMA" ]; then
-  echo "Setting up Ollama container for local LLM inference..."
+  echo "正在设置 Ollama 容器用于本地 LLM 推理..."
   
-  # Start Ollama container if not already running
+  # 如果 Ollama 容器未运行则启动它
   $COMPOSE_CMD $GPU_CONFIG up -d ollama
   
-  # Wait for Ollama to start
-  echo "Waiting for Ollama to start..."
+  # 等待 Ollama 启动
+  echo "等待 Ollama 启动..."
   for i in {1..30}; do
     if docker run --rm --network=host curlimages/curl:latest curl -s http://localhost:11434/api/version &> /dev/null; then
-      echo "Ollama is running."
-      # Show available models
-      echo "Available models:"
+      echo "Ollama 正在运行。"
+      # 显示可用模型
+      echo "可用模型："
       docker exec -t ollama ollama list
       break
     fi
@@ -264,13 +264,13 @@ if [ -n "$USE_OLLAMA" ]; then
     sleep 1
   done
   
-  # Build the AI Hedge Fund image if needed
+  # 如果需要则构建 AI 对冲基金镜像
   if [[ "$(docker images -q ai-hedge-fund 2> /dev/null)" == "" ]]; then
-    echo "Building AI Hedge Fund image..."
+    echo "正在构建 AI 对冲基金镜像..."
     docker build -t ai-hedge-fund .
   fi
   
-  # Create command override for Docker Compose
+  # 创建 Docker Compose 命令覆盖
   COMMAND_OVERRIDE=""
   
   if [ -n "$START_DATE" ]; then
@@ -289,10 +289,10 @@ if [ -n "$USE_OLLAMA" ]; then
     COMMAND_OVERRIDE="$COMMAND_OVERRIDE --margin-requirement $MARGIN_REQUIREMENT"
   fi
   
-  # Run the command with Docker Compose
-  echo "Running AI Hedge Fund with Ollama using Docker Compose..."
+  # 使用 Docker Compose 运行命令
+  echo "正在使用 Docker Compose 运行带 Ollama 的 AI 对冲基金..."
   
-  # Use the appropriate service based on command and reasoning flag
+  # 根据命令和推理标志使用适当的服务
   if [ "$COMMAND" = "main" ]; then
     if [ -n "$SHOW_REASONING" ]; then
       $COMPOSE_CMD $GPU_CONFIG run --rm hedge-fund-reasoning python src/main.py --ticker $TICKER $COMMAND_OVERRIDE $SHOW_REASONING --ollama
@@ -306,13 +306,13 @@ if [ -n "$USE_OLLAMA" ]; then
   exit 0
 fi
 
-# Standard Docker run (without Ollama)
-# Build the command
+# 标准 Docker 运行（不使用 Ollama）
+# 构建命令
 CMD="docker run -it --rm -v $(pwd)/.env:/app/.env"
 
 # Add the command
 CMD="$CMD ai-hedge-fund python $SCRIPT_PATH --ticker $TICKER $START_DATE $END_DATE $INITIAL_PARAM --margin-requirement $MARGIN_REQUIREMENT $SHOW_REASONING"
 
-# Run the command
-echo "Running: $CMD"
+# 运行命令
+echo "正在运行: $CMD"
 $CMD 

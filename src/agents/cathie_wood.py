@@ -1,3 +1,12 @@
+"""
+凯茜·伍德投资策略分析代理
+该模块实现了基于凯茜·伍德投资理念的股票分析系统。主要关注:
+1. 优先考虑具有突破性技术或商业模式的公司
+2. 关注具有快速采用曲线和巨大总可寻址市场(TAM)的行业
+3. 主要投资于AI、机器人、基因测序、金融科技和区块链
+4. 愿意忍受短期波动以获取长期收益
+"""
+
 from src.graph.state import AgentState, show_agent_reasoning
 from src.tools.api import get_financial_metrics, get_market_cap, search_line_items
 from langchain_core.prompts import ChatPromptTemplate
@@ -10,6 +19,13 @@ from src.utils.llm import call_llm
 
 
 class CathieWoodSignal(BaseModel):
+    """
+    凯茜·伍德风格的输出信号容器
+    包含:
+    - signal: 看涨/看跌/中性信号
+    - confidence: 置信度(0-100)
+    - reasoning: 推理说明
+    """
     signal: Literal["bullish", "bearish", "neutral"]
     confidence: float
     reasoning: str
@@ -17,11 +33,11 @@ class CathieWoodSignal(BaseModel):
 
 def cathie_wood_agent(state: AgentState):
     """
-    Analyzes stocks using Cathie Wood's investing principles and LLM reasoning.
-    1. Prioritizes companies with breakthrough technologies or business models
-    2. Focuses on industries with rapid adoption curves and massive TAM (Total Addressable Market).
-    3. Invests mostly in AI, robotics, genomic sequencing, fintech, and blockchain.
-    4. Willing to endure short-term volatility for long-term gains.
+    使用凯茜·伍德的投资原则和LLM推理分析股票。
+    1. 优先考虑具有突破性技术或商业模式的公司
+    2. 关注具有快速采用曲线和巨大TAM的行业
+    3. 主要投资于AI、机器人、基因测序、金融科技和区块链
+    4. 愿意忍受短期波动以获取长期收益
     """
     data = state["data"]
     end_date = data["end_date"]
@@ -106,13 +122,13 @@ def cathie_wood_agent(state: AgentState):
 
 def analyze_disruptive_potential(metrics: list, financial_line_items: list) -> dict:
     """
-    Analyze whether the company has disruptive products, technology, or business model.
-    Evaluates multiple dimensions of disruptive potential:
-    1. Revenue Growth Acceleration - indicates market adoption
-    2. R&D Intensity - shows innovation investment
-    3. Gross Margin Trends - suggests pricing power and scalability
-    4. Operating Leverage - demonstrates business model efficiency
-    5. Market Share Dynamics - indicates competitive position
+    分析公司是否具有颠覆性产品、技术或商业模式。
+    评估颠覆性潜力的多个维度:
+    1. 收入增长加速 - 表明市场采用
+    2. 研发强度 - 显示创新投资
+    3. 毛利率趋势 - 暗示定价能力和可扩展性
+    4. 运营杠杆 - 展示商业模式效率
+    5. 市场份额动态 - 表明竞争地位
     """
     score = 0
     details = []
@@ -205,13 +221,13 @@ def analyze_disruptive_potential(metrics: list, financial_line_items: list) -> d
 
 def analyze_innovation_growth(metrics: list, financial_line_items: list) -> dict:
     """
-    Evaluate the company's commitment to innovation and potential for exponential growth.
-    Analyzes multiple dimensions:
-    1. R&D Investment Trends - measures commitment to innovation
-    2. Free Cash Flow Generation - indicates ability to fund innovation
-    3. Operating Efficiency - shows scalability of innovation
-    4. Capital Allocation - reveals innovation-focused management
-    5. Growth Reinvestment - demonstrates commitment to future growth
+    评估公司对创新的承诺和指数增长潜力。
+    分析多个维度:
+    1. 研发投资趋势 - 衡量对创新的承诺
+    2. 自由现金流生成 - 表明资助创新的能力
+    3. 运营效率 - 显示创新的可扩展性
+    4. 资本配置 - 揭示以创新为导向的管理层
+    5. 增长再投资 - 展示对未来增长的承诺
     """
     score = 0
     details = []
@@ -313,9 +329,9 @@ def analyze_innovation_growth(metrics: list, financial_line_items: list) -> dict
 
 def analyze_cathie_wood_valuation(financial_line_items: list, market_cap: float) -> dict:
     """
-    Cathie Wood often focuses on long-term exponential growth potential. We can do
-    a simplified approach looking for a large total addressable market (TAM) and the
-    company's ability to capture a sizable portion.
+    凯茜·伍德经常关注长期指数增长潜力。我们可以采用
+    简化方法,寻找巨大的总可寻址市场(TAM)和公司
+    捕获其中相当大部分的能力。
     """
     if not financial_line_items or market_cap is None:
         return {"score": 0, "details": "Insufficient data for valuation"}
@@ -363,7 +379,7 @@ def generate_cathie_wood_output(
     model_provider: str,
 ) -> CathieWoodSignal:
     """
-    Generates investment decisions in the style of Cathie Wood.
+    以凯茜·伍德的风格生成投资决策。
     """
     template = ChatPromptTemplate.from_messages(
         [

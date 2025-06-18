@@ -1,3 +1,5 @@
+"""交易结果显示相关的工具函数。"""
+
 from colorama import Fore, Style
 from tabulate import tabulate
 from .analysts import ANALYST_ORDER
@@ -6,38 +8,38 @@ import json
 
 
 def sort_agent_signals(signals):
-    """Sort agent signals in a consistent order."""
-    # Create order mapping from ANALYST_ORDER
+    """按照一致的顺序对代理信号进行排序。"""
+    # 从ANALYST_ORDER创建顺序映射
     analyst_order = {display: idx for idx, (display, _) in enumerate(ANALYST_ORDER)}
-    analyst_order["Risk Management"] = len(ANALYST_ORDER)  # Add Risk Management at the end
+    analyst_order["Risk Management"] = len(ANALYST_ORDER)  # 在末尾添加风险管理
 
     return sorted(signals, key=lambda x: analyst_order.get(x[0], 999))
 
 
 def print_trading_output(result: dict) -> None:
     """
-    Print formatted trading results with colored tables for multiple tickers.
+    打印多个股票的格式化交易结果，包含彩色表格。
 
-    Args:
-        result (dict): Dictionary containing decisions and analyst signals for multiple tickers
+    参数:
+        result (dict): 包含多个股票的决策和分析师信号的字典
     """
     decisions = result.get("decisions")
     if not decisions:
-        print(f"{Fore.RED}No trading decisions available{Style.RESET_ALL}")
+        print(f"{Fore.RED}没有可用的交易决策{Style.RESET_ALL}")
         return
 
-    # Print decisions for each ticker
+    # 打印每个股票的决策
     for ticker, decision in decisions.items():
-        print(f"\n{Fore.WHITE}{Style.BRIGHT}Analysis for {Fore.CYAN}{ticker}{Style.RESET_ALL}")
+        print(f"\n{Fore.WHITE}{Style.BRIGHT}分析 {Fore.CYAN}{ticker}{Style.RESET_ALL}")
         print(f"{Fore.WHITE}{Style.BRIGHT}{'=' * 50}{Style.RESET_ALL}")
 
-        # Prepare analyst signals table for this ticker
+        # 准备此股票的分析师信号表格
         table_data = []
         for agent, signals in result.get("analyst_signals", {}).items():
             if ticker not in signals:
                 continue
                 
-            # Skip Risk Management agent in the signals section
+            # 在信号部分跳过风险管理代理
             if agent == "risk_management_agent":
                 continue
 
@@ -52,25 +54,25 @@ def print_trading_output(result: dict) -> None:
                 "NEUTRAL": Fore.YELLOW,
             }.get(signal_type, Fore.WHITE)
             
-            # Get reasoning if available
+            # 获取推理说明（如果可用）
             reasoning_str = ""
             if "reasoning" in signal and signal["reasoning"]:
                 reasoning = signal["reasoning"]
                 
-                # Handle different types of reasoning (string, dict, etc.)
+                # 处理不同类型的推理（字符串、字典等）
                 if isinstance(reasoning, str):
                     reasoning_str = reasoning
                 elif isinstance(reasoning, dict):
-                    # Convert dict to string representation
+                    # 将字典转换为字符串表示
                     reasoning_str = json.dumps(reasoning, indent=2)
                 else:
-                    # Convert any other type to string
+                    # 将任何其他类型转换为字符串
                     reasoning_str = str(reasoning)
                 
-                # Wrap long reasoning text to make it more readable
+                # 包装长推理文本以使其更易读
                 wrapped_reasoning = ""
                 current_line = ""
-                # Use a fixed width of 60 characters to match the table column width
+                # 使用60个字符的固定宽度以匹配表格列宽
                 max_line_length = 60
                 for word in reasoning_str.split():
                     if len(current_line) + len(word) + 1 > max_line_length:
@@ -95,10 +97,10 @@ def print_trading_output(result: dict) -> None:
                 ]
             )
 
-        # Sort the signals according to the predefined order
+        # 根据预定义的顺序对信号进行排序
         table_data = sort_agent_signals(table_data)
 
-        print(f"\n{Fore.WHITE}{Style.BRIGHT}AGENT ANALYSIS:{Style.RESET_ALL} [{Fore.CYAN}{ticker}{Style.RESET_ALL}]")
+        print(f"\n{Fore.WHITE}{Style.BRIGHT}代理分析:{Style.RESET_ALL} [{Fore.CYAN}{ticker}{Style.RESET_ALL}]")
         print(
             tabulate(
                 table_data,
@@ -108,7 +110,7 @@ def print_trading_output(result: dict) -> None:
             )
         )
 
-        # Print Trading Decision Table
+        # 打印交易决策表格
         action = decision.get("action", "").upper()
         action_color = {
             "BUY": Fore.GREEN,
@@ -118,13 +120,13 @@ def print_trading_output(result: dict) -> None:
             "SHORT": Fore.RED,
         }.get(action, Fore.WHITE)
 
-        # Get reasoning and format it
+        # 获取并格式化推理
         reasoning = decision.get("reasoning", "")
-        # Wrap long reasoning text to make it more readable
+        # 包装长推理文本以使其更易读
         wrapped_reasoning = ""
         if reasoning:
             current_line = ""
-            # Use a fixed width of 60 characters to match the table column width
+            # 使用60个字符的固定宽度以匹配表格列宽
             max_line_length = 60
             for word in reasoning.split():
                 if len(current_line) + len(word) + 1 > max_line_length:
@@ -148,14 +150,14 @@ def print_trading_output(result: dict) -> None:
             ["Reasoning", f"{Fore.WHITE}{wrapped_reasoning}{Style.RESET_ALL}"],
         ]
         
-        print(f"\n{Fore.WHITE}{Style.BRIGHT}TRADING DECISION:{Style.RESET_ALL} [{Fore.CYAN}{ticker}{Style.RESET_ALL}]")
+        print(f"\n{Fore.WHITE}{Style.BRIGHT}交易决策:{Style.RESET_ALL} [{Fore.CYAN}{ticker}{Style.RESET_ALL}]")
         print(tabulate(decision_data, tablefmt="grid", colalign=("left", "left")))
 
-    # Print Portfolio Summary
-    print(f"\n{Fore.WHITE}{Style.BRIGHT}PORTFOLIO SUMMARY:{Style.RESET_ALL}")
+    # 打印投资组合摘要
+    print(f"\n{Fore.WHITE}{Style.BRIGHT}投资组合摘要:{Style.RESET_ALL}")
     portfolio_data = []
     
-    # Extract portfolio manager reasoning (common for all tickers)
+    # 提取投资组合管理器推理（所有股票通用）
     portfolio_manager_reasoning = None
     for ticker, decision in decisions.items():
         if decision.get("reasoning"):
@@ -182,7 +184,7 @@ def print_trading_output(result: dict) -> None:
 
     headers = [f"{Fore.WHITE}Ticker", "Action", "Quantity", "Confidence"]
     
-    # Print the portfolio summary table
+    # 打印投资组合摘要表格
     print(
         tabulate(
             portfolio_data,
@@ -192,23 +194,23 @@ def print_trading_output(result: dict) -> None:
         )
     )
     
-    # Print Portfolio Manager's reasoning if available
+    # 如果可用，打印投资组合管理器的推理
     if portfolio_manager_reasoning:
-        # Handle different types of reasoning (string, dict, etc.)
+        # 处理不同类型的推理（字符串、字典等）
         reasoning_str = ""
         if isinstance(portfolio_manager_reasoning, str):
             reasoning_str = portfolio_manager_reasoning
         elif isinstance(portfolio_manager_reasoning, dict):
-            # Convert dict to string representation
+            # 将字典转换为字符串表示
             reasoning_str = json.dumps(portfolio_manager_reasoning, indent=2)
         else:
-            # Convert any other type to string
+            # 将任何其他类型转换为字符串
             reasoning_str = str(portfolio_manager_reasoning)
             
-        # Wrap long reasoning text to make it more readable
+        # 包装长推理文本以使其更易读
         wrapped_reasoning = ""
         current_line = ""
-        # Use a fixed width of 60 characters to match the table column width
+        # 使用60个字符的固定宽度以匹配表格列宽
         max_line_length = 60
         for word in reasoning_str.split():
             if len(current_line) + len(word) + 1 > max_line_length:
@@ -222,7 +224,7 @@ def print_trading_output(result: dict) -> None:
         if current_line:
             wrapped_reasoning += current_line
             
-        print(f"\n{Fore.WHITE}{Style.BRIGHT}Portfolio Strategy:{Style.RESET_ALL}")
+        print(f"\n{Fore.WHITE}{Style.BRIGHT}投资组合策略:{Style.RESET_ALL}")
         print(f"{Fore.CYAN}{wrapped_reasoning}{Style.RESET_ALL}")
 
 

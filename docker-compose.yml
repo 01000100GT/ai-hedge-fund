@@ -1,32 +1,35 @@
 services:
+  # Ollama服务配置
   ollama:
-    image: ollama/ollama:latest
-    container_name: ollama
+    image: ollama/ollama:latest    # 使用最新的ollama镜像
+    container_name: ollama         # 容器名称
     environment:
-      - OLLAMA_HOST=0.0.0.0
-      # Apple Silicon GPU acceleration
+      - OLLAMA_HOST=0.0.0.0       # 设置Ollama主机
+      # Apple Silicon GPU加速配置
       - METAL_DEVICE=on
       - METAL_DEVICE_INDEX=0
     volumes:
-      - ollama_data:/root/.ollama
+      - ollama_data:/root/.ollama  # 数据持久化
     ports:
-      - "11434:11434"
-    restart: unless-stopped
+      - "11434:11434"             # 端口映射
+    restart: unless-stopped        # 重启策略
 
+  # 对冲基金主服务
   hedge-fund:
-    build: .
+    build: .                      # 使用当前目录的Dockerfile构建
     image: ai-hedge-fund
     depends_on:
-      - ollama
+      - ollama                    # 依赖ollama服务
     volumes:
-      - ./.env:/app/.env
-    command: python src/main.py --ticker AAPL,MSFT,NVDA
+      - ./.env:/app/.env         # 环境变量文件挂载
+    command: python src/main.py --ticker AAPL,MSFT,NVDA  # 运行命令
     environment:
       - PYTHONUNBUFFERED=1
       - OLLAMA_BASE_URL=http://ollama:11434
     tty: true
     stdin_open: true
 
+  # 对冲基金推理服务（显示推理过程）
   hedge-fund-reasoning:
     build: .
     image: ai-hedge-fund

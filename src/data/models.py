@@ -1,7 +1,17 @@
+"""
+数据模型定义模块
+该模块定义了系统中使用的所有数据模型类，
+包括价格、财务指标、内部交易、公司新闻等数据结构。
+"""
+
 from pydantic import BaseModel
 
 
 class Price(BaseModel):
+    """
+    价格数据模型
+    定义了单个时间点的价格信息结构
+    """
     open: float
     close: float
     high: float
@@ -11,11 +21,19 @@ class Price(BaseModel):
 
 
 class PriceResponse(BaseModel):
+    """
+    价格数据响应模型
+    包含股票代码和对应的价格数据列表
+    """
     ticker: str
     prices: list[Price]
 
 
 class FinancialMetrics(BaseModel):
+    """
+    财务指标模型
+    包含公司的各项财务指标数据
+    """
     ticker: str
     report_period: str
     period: str
@@ -62,10 +80,18 @@ class FinancialMetrics(BaseModel):
 
 
 class FinancialMetricsResponse(BaseModel):
+    """
+    财务指标响应模型
+    包含财务指标数据列表
+    """
     financial_metrics: list[FinancialMetrics]
 
 
 class LineItem(BaseModel):
+    """
+    财务报表行项目模型
+    定义了财务报表中单个行项目的数据结构
+    """
     ticker: str
     report_period: str
     period: str
@@ -76,10 +102,18 @@ class LineItem(BaseModel):
 
 
 class LineItemResponse(BaseModel):
+    """
+    财务报表行项目响应模型
+    包含搜索结果列表
+    """
     search_results: list[LineItem]
 
 
 class InsiderTrade(BaseModel):
+    """
+    内部交易数据模型
+    定义了公司内部人员交易信息的数据结构
+    """
     ticker: str
     issuer: str | None
     name: str | None
@@ -96,10 +130,18 @@ class InsiderTrade(BaseModel):
 
 
 class InsiderTradeResponse(BaseModel):
+    """
+    内部交易响应模型
+    包含内部交易数据列表
+    """
     insider_trades: list[InsiderTrade]
 
 
 class CompanyNews(BaseModel):
+    """
+    公司新闻数据模型
+    定义了单条公司新闻的数据结构
+    """
     ticker: str
     title: str
     author: str
@@ -110,10 +152,18 @@ class CompanyNews(BaseModel):
 
 
 class CompanyNewsResponse(BaseModel):
+    """
+    公司新闻响应模型
+    包含新闻数据列表
+    """
     news: list[CompanyNews]
 
 
 class CompanyFacts(BaseModel):
+    """
+    公司基本信息模型
+    包含公司的基本信息数据
+    """
     ticker: str
     name: str
     cik: str | None = None
@@ -135,21 +185,37 @@ class CompanyFacts(BaseModel):
 
 
 class CompanyFactsResponse(BaseModel):
+    """
+    公司基本信息响应模型
+    包含公司基本信息数据
+    """
     company_facts: CompanyFacts
 
 
 class Position(BaseModel):
+    """
+    持仓位置模型
+    定义了单个持仓的数据结构
+    """
     cash: float = 0.0
     shares: int = 0
     ticker: str
 
 
 class Portfolio(BaseModel):
+    """
+    投资组合模型
+    包含所有持仓位置和总现金
+    """
     positions: dict[str, Position]  # ticker -> Position mapping
     total_cash: float = 0.0
 
 
 class AnalystSignal(BaseModel):
+    """
+    分析师信号模型
+    定义了分析师产生的交易信号数据结构
+    """
     signal: str | None = None
     confidence: float | None = None
     reasoning: dict | str | None = None
@@ -157,11 +223,19 @@ class AnalystSignal(BaseModel):
 
 
 class TickerAnalysis(BaseModel):
+    """
+    股票分析模型
+    包含某只股票的所有分析师信号
+    """
     ticker: str
     analyst_signals: dict[str, AnalystSignal]  # agent_name -> signal mapping
 
 
 class AgentStateData(BaseModel):
+    """
+    智能体状态数据模型
+    定义了智能体的状态数据结构
+    """
     tickers: list[str]
     portfolio: Portfolio
     start_date: str
@@ -170,5 +244,9 @@ class AgentStateData(BaseModel):
 
 
 class AgentStateMetadata(BaseModel):
+    """
+    智能体状态元数据模型
+    定义了智能体状态的元数据结构
+    """
     show_reasoning: bool = False
     model_config = {"extra": "allow"}

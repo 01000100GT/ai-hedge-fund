@@ -1,4 +1,16 @@
-"""Utilities for working with Ollama models"""
+"""
+Ollama模型管理模块
+
+该模块实现了与Ollama模型服务相关的功能，主要包括：
+- 检查Ollama是否已安装
+- 启动和管理Ollama服务
+- 下载和管理AI模型
+- 检查模型可用性
+- 删除已下载的模型
+- 支持Docker环境下的模型管理
+
+这是系统中负责AI模型管理和部署的核心组件。
+"""
 
 import platform
 import subprocess
@@ -10,15 +22,30 @@ from colorama import Fore, Style
 import os
 from . import docker
 
-# Constants
-OLLAMA_SERVER_URL = "http://localhost:11434"
-OLLAMA_API_MODELS_ENDPOINT = f"{OLLAMA_SERVER_URL}/api/tags"
-OLLAMA_DOWNLOAD_URL = {"darwin": "https://ollama.com/download/darwin", "windows": "https://ollama.com/download/windows", "linux": "https://ollama.com/download/linux"}  # macOS  # Windows  # Linux
-INSTALLATION_INSTRUCTIONS = {"darwin": "curl -fsSL https://ollama.com/install.sh | sh", "windows": "# Download from https://ollama.com/download/windows and run the installer", "linux": "curl -fsSL https://ollama.com/install.sh | sh"}
+# 常量定义
+OLLAMA_SERVER_URL = "http://localhost:11434"  # Ollama服务器URL
+OLLAMA_API_MODELS_ENDPOINT = f"{OLLAMA_SERVER_URL}/api/tags"  # 模型API端点
+# 不同操作系统的Ollama下载URL
+OLLAMA_DOWNLOAD_URL = {
+    "darwin": "https://ollama.com/download/darwin",  # macOS
+    "windows": "https://ollama.com/download/windows",  # Windows
+    "linux": "https://ollama.com/download/linux"  # Linux
+}
+# 不同操作系统的安装指令
+INSTALLATION_INSTRUCTIONS = {
+    "darwin": "curl -fsSL https://ollama.com/install.sh | sh",
+    "windows": "# Download from https://ollama.com/download/windows and run the installer",
+    "linux": "curl -fsSL https://ollama.com/install.sh | sh"
+}
 
 
 def is_ollama_installed() -> bool:
-    """Check if Ollama is installed on the system."""
+    """
+    检查系统是否已安装Ollama
+    
+    返回:
+        bool: 如果已安装返回True，否则返回False
+    """
     system = platform.system().lower()
 
     if system == "darwin" or system == "linux":  # macOS or Linux
@@ -38,7 +65,12 @@ def is_ollama_installed() -> bool:
 
 
 def is_ollama_server_running() -> bool:
-    """Check if the Ollama server is running."""
+    """
+    检查Ollama服务器是否正在运行
+    
+    返回:
+        bool: 如果服务器正在运行返回True，否则返回False
+    """
     try:
         response = requests.get(OLLAMA_API_MODELS_ENDPOINT, timeout=2)
         return response.status_code == 200
@@ -47,7 +79,12 @@ def is_ollama_server_running() -> bool:
 
 
 def get_locally_available_models() -> List[str]:
-    """Get a list of models that are already downloaded locally."""
+    """
+    获取本地已下载的模型列表
+    
+    返回:
+        List[str]: 已下载模型的名称列表
+    """
     if not is_ollama_server_running():
         return []
 
@@ -62,7 +99,12 @@ def get_locally_available_models() -> List[str]:
 
 
 def start_ollama_server() -> bool:
-    """Start the Ollama server if it's not already running."""
+    """
+    启动Ollama服务器（如果尚未运行）
+    
+    返回:
+        bool: 如果成功启动返回True，否则返回False
+    """
     if is_ollama_server_running():
         print(f"{Fore.GREEN}Ollama server is already running.{Style.RESET_ALL}")
         return True
@@ -93,7 +135,12 @@ def start_ollama_server() -> bool:
 
 
 def install_ollama() -> bool:
-    """Install Ollama on the system."""
+    """
+    在系统上安装Ollama
+    
+    返回:
+        bool: 如果安装成功返回True，否则返回False
+    """
     system = platform.system().lower()
     if system not in OLLAMA_DOWNLOAD_URL:
         print(f"{Fore.RED}Unsupported operating system for automatic installation: {system}{Style.RESET_ALL}")
@@ -186,7 +233,15 @@ def install_ollama() -> bool:
 
 
 def download_model(model_name: str) -> bool:
-    """Download an Ollama model."""
+    """
+    下载指定的Ollama模型
+    
+    参数:
+        model_name (str): 要下载的模型名称
+        
+    返回:
+        bool: 如果下载成功返回True，否则返回False
+    """
     if not is_ollama_server_running():
         if not start_ollama_server():
             return False
@@ -290,7 +345,15 @@ def download_model(model_name: str) -> bool:
 
 
 def ensure_ollama_and_model(model_name: str) -> bool:
-    """Ensure Ollama is installed, running, and the requested model is available."""
+    """
+    确保Ollama已安装、正在运行，且请求的模型可用
+    
+    参数:
+        model_name (str): 需要确保可用的模型名称
+        
+    返回:
+        bool: 如果所有条件都满足返回True，否则返回False
+    """
     # Check if we're running in Docker
     in_docker = os.environ.get("OLLAMA_BASE_URL", "").startswith("http://ollama:") or os.environ.get("OLLAMA_BASE_URL", "").startswith("http://host.docker.internal:")
     
@@ -340,7 +403,15 @@ def ensure_ollama_and_model(model_name: str) -> bool:
 
 
 def delete_model(model_name: str) -> bool:
-    """Delete a locally downloaded Ollama model."""
+    """
+    删除本地已下载的Ollama模型
+    
+    参数:
+        model_name (str): 要删除的模型名称
+        
+    返回:
+        bool: 如果删除成功返回True，否则返回False
+    """
     # Check if we're running in Docker
     in_docker = os.environ.get("OLLAMA_BASE_URL", "").startswith("http://ollama:") or os.environ.get("OLLAMA_BASE_URL", "").startswith("http://host.docker.internal:")
     
@@ -371,7 +442,7 @@ def delete_model(model_name: str) -> bool:
         return False
 
 
-# Add this at the end of the file for command-line usage
+# 命令行入口点
 if __name__ == "__main__":
     import sys
     import argparse
@@ -381,9 +452,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.check_model:
-        print(f"Ensuring Ollama is installed and model {args.check_model} is available...")
+        print(f"正在确保Ollama已安装且模型 {args.check_model} 可用...")
         result = ensure_ollama_and_model(args.check_model)
         sys.exit(0 if result else 1)
     else:
-        print("No action specified. Use --check-model to check if a model exists.")
+        print("未指定操作。使用 --check-model 检查模型是否存在。")
         sys.exit(1)

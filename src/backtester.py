@@ -1,3 +1,14 @@
+"""
+# src/backtester.py
+# 这是AI对冲基金系统的回测模块
+# 主要功能:
+# 1. 提供历史数据回测功能
+# 2. 模拟交易执行和投资组合管理
+# 3. 计算和分析回测性能指标
+# 4. 生成回测报告和可视化图表
+# 5. 支持多种回测策略和参数配置
+"""
+
 import sys
 
 from datetime import datetime, timedelta
@@ -28,6 +39,27 @@ init(autoreset=True)
 
 
 class Backtester:
+    """
+    回测器类
+    
+    主要功能:
+    1. 执行历史数据回测
+    2. 模拟交易执行
+    3. 计算性能指标
+    4. 生成回测报告
+    
+    属性:
+        agent (Callable): 交易代理函数
+        tickers (list[str]): 股票代码列表
+        start_date (str): 回测开始日期
+        end_date (str): 回测结束日期
+        initial_capital (float): 初始资金
+        model_name (str): 使用的LLM模型名称
+        model_provider (str): LLM提供商
+        selected_analysts (list[str]): 选择的分析师列表
+        portfolio_values (list): 投资组合价值历史记录
+        portfolio (dict): 当前投资组合状态
+    """
     def __init__(
         self,
         agent: Callable,
@@ -41,15 +73,18 @@ class Backtester:
         initial_margin_requirement: float = 0.0,
     ):
         """
-        :param agent: The trading agent (Callable).
-        :param tickers: List of tickers to backtest.
-        :param start_date: Start date string (YYYY-MM-DD).
-        :param end_date: End date string (YYYY-MM-DD).
-        :param initial_capital: Starting portfolio cash.
-        :param model_name: Which LLM model name to use (gpt-4, etc).
-        :param model_provider: Which LLM provider (OpenAI, etc).
-        :param selected_analysts: List of analyst names or IDs to incorporate.
-        :param initial_margin_requirement: The margin ratio (e.g. 0.5 = 50%).
+        初始化回测器
+        
+        参数:
+            agent: 交易代理函数
+            tickers: 股票代码列表
+            start_date: 回测开始日期
+            end_date: 回测结束日期
+            initial_capital: 初始资金
+            model_name: LLM模型名称
+            model_provider: LLM提供商
+            selected_analysts: 选择的分析师列表
+            initial_margin_requirement: 初始保证金要求
         """
         self.agent = agent
         self.tickers = tickers
@@ -78,9 +113,19 @@ class Backtester:
 
     def execute_trade(self, ticker: str, action: str, quantity: float, current_price: float):
         """
-        Execute trades with support for both long and short positions.
-        `quantity` is the number of shares the agent wants to buy/sell/short/cover.
-        We will only trade integer shares to keep it simple.
+        执行交易操作
+        
+        支持多空交易，包括买入、卖出、做空和平仓操作
+        会根据当前资金和持仓情况自动调整交易数量
+        
+        参数:
+            ticker: 股票代码
+            action: 交易动作 ('buy'/'sell'/'short'/'cover')
+            quantity: 目标交易数量
+            current_price: 当前股票价格
+            
+        返回:
+            int: 实际执行的交易数量
         """
         if quantity <= 0:
             return 0
@@ -242,10 +287,18 @@ class Backtester:
 
     def calculate_portfolio_value(self, current_prices):
         """
-        Calculate total portfolio value, including:
-          - cash
-          - market value of long positions
-          - unrealized gains/losses for short positions
+        计算投资组合总价值
+        
+        包含:
+        - 现金
+        - 多头持仓市值
+        - 空头持仓未实现盈亏
+        
+        参数:
+            current_prices: 当前各股票价格字典
+            
+        返回:
+            float: 投资组合总价值
         """
         total_value = self.portfolio["cash"]
 
@@ -264,7 +317,15 @@ class Backtester:
         return total_value
 
     def prefetch_data(self):
-        """Pre-fetch all data needed for the backtest period."""
+        """
+        预获取回测所需的所有数据
+        
+        包括:
+        - 历史价格数据
+        - 财务指标数据
+        - 内部交易数据
+        - 公司新闻数据
+        """
         print("\nPre-fetching data for the entire backtest period...")
 
         # Convert end_date string to datetime, fetch up to 1 year before
@@ -288,6 +349,19 @@ class Backtester:
         print("Data pre-fetch complete.")
 
     def run_backtest(self):
+        """
+        运行回测主流程
+        
+        主要步骤:
+        1. 预获取数据
+        2. 按日期遍历执行交易
+        3. 计算每日投资组合价值
+        4. 更新性能指标
+        5. 生成回测报告
+        
+        返回:
+            dict: 包含各项性能指标的字典
+        """
         # Pre-fetch all data at the start
         self.prefetch_data()
 
@@ -465,7 +539,18 @@ class Backtester:
         return performance_metrics
 
     def _update_performance_metrics(self, performance_metrics):
-        """Helper method to update performance metrics using daily returns."""
+        """
+        更新性能指标
+        
+        计算:
+        - 夏普比率
+        - 索提诺比率
+        - 最大回撤
+        - 收益率等指标
+        
+        参数:
+            performance_metrics: 性能指标字典
+        """
         values_df = pd.DataFrame(self.portfolio_values).set_index("Date")
         values_df["Daily Return"] = values_df["Portfolio Value"].pct_change()
         clean_returns = values_df["Daily Return"].dropna()
@@ -515,7 +600,19 @@ class Backtester:
             performance_metrics["max_drawdown_date"] = None
 
     def analyze_performance(self):
-        """Creates a performance DataFrame, prints summary stats, and plots equity curve."""
+        """
+        分析回测性能并生成报告
+        
+        包括:
+        - 计算总收益率
+        - 计算已实现盈亏
+        - 绘制资金曲线
+        - 计算各项统计指标
+        - 生成详细分析报告
+        
+        返回:
+            DataFrame: 包含回测表现数据的DataFrame对象
+        """
         if not self.portfolio_values:
             print("No portfolio data found. Please run the backtest first.")
             return pd.DataFrame()

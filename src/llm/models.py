@@ -1,3 +1,9 @@
+"""
+LLM模型相关的类和函数定义文件
+该文件包含了与大语言模型(LLM)交互相关的所有类定义和工具函数，
+包括模型提供商枚举、模型配置类以及获取模型实例的函数等。
+"""
+
 import os
 from langchain_anthropic import ChatAnthropic
 from langchain_deepseek import ChatDeepSeek
@@ -13,7 +19,10 @@ from colorama import Fore, Style
 
 
 class ModelProvider(str, Enum):
-    """Enum for supported LLM providers"""
+    """
+    支持的LLM提供商枚举类
+    定义了系统支持的所有AI模型服务提供商
+    """
 
     ANTHROPIC = "Anthropic"
     DEEPSEEK = "DeepSeek"
@@ -26,18 +35,21 @@ class ModelProvider(str, Enum):
 
 @dataclass
 class LLMModel:
-    """Represents an LLM model configuration"""
+    """
+    LLM模型配置类
+    表示一个LLM模型的配置信息，包含显示名称、模型名称和提供商信息
+    """
 
     display_name: str
     model_name: str
     provider: ModelProvider
 
     def to_choice_tuple(self) -> Tuple[str, str, str]:
-        """Convert to format needed for questionary choices"""
+        """将模型信息转换为questionary选项所需的格式"""
         return (self.display_name, self.model_name, self.provider.value)
 
     def has_json_mode(self) -> bool:
-        """Check if the model supports JSON mode"""
+        """检查模型是否支持JSON模式输出"""
         if self.is_deepseek() or self.is_gemini():
             return False
         # Only certain Ollama models support JSON mode
@@ -46,15 +58,15 @@ class LLMModel:
         return True
 
     def is_deepseek(self) -> bool:
-        """Check if the model is a DeepSeek model"""
+        """检查是否为DeepSeek模型"""
         return self.model_name.startswith("deepseek")
 
     def is_gemini(self) -> bool:
-        """Check if the model is a Gemini model"""
+        """检查是否为Gemini模型"""
         return self.model_name.startswith("gemini")
 
     def is_ollama(self) -> bool:
-        """Check if the model is an Ollama model"""
+        """检查是否为Ollama模型"""
         return self.provider == ModelProvider.OLLAMA
 
 
@@ -95,7 +107,13 @@ OLLAMA_LLM_ORDER = [model.to_choice_tuple() for model in OLLAMA_MODELS]
 
 
 def get_model_info(model_name: str) -> LLMModel | None:
-    """Get model information by model_name"""
+    """
+    根据模型名称获取模型信息
+    Args:
+        model_name: 模型名称
+    Returns:
+        返回对应的LLMModel实例，如果未找到则返回None
+    """
     if model_name == "openai_compatible_custom":
         return LLMModel(
             display_name="OpenAI Compatible (Custom Endpoint via env vars)",
@@ -115,6 +133,14 @@ def get_model_info(model_name: str) -> LLMModel | None:
 
 
 def get_model(model_name: str, model_provider: ModelProvider) -> ChatOpenAI | ChatGroq | ChatOllama | None:
+    """
+    根据模型名称和提供商获取模型实例
+    Args:
+        model_name: 模型名称
+        model_provider: 模型提供商
+    Returns:
+        返回对应的模型实例，如果创建失败则返回None
+    """
     if model_provider == ModelProvider.GROQ:
         api_key = os.getenv("GROQ_API_KEY")
         if not api_key:

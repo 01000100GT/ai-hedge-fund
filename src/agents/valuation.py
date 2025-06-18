@@ -1,9 +1,13 @@
 from __future__ import annotations
 
-"""Valuation Agent
+"""
+估值分析代理
 
-Implements four complementary valuation methodologies and aggregates them with
-configurable weights. 
+该模块实现了四种互补的估值方法并使用可配置权重进行整合:
+1. 所有者收益法 - 巴菲特风格的自由现金流分析
+2. 现金流贴现法 - 经典DCF估值
+3. 企业价值倍数法 - 基于EV/EBITDA
+4. 剩余收益模型 - Edwards-Bell-Ohlson方法
 """
 
 from statistics import median
@@ -19,7 +23,15 @@ from src.tools.api import (
 )
 
 def valuation_agent(state: AgentState):
-    """Run valuation across tickers and write signals back to `state`."""
+    """
+    估值分析代理主函数
+    
+    对多个股票进行估值分析并将信号写回状态。主要职责:
+    1. 获取财务数据和指标
+    2. 应用多种估值方法
+    3. 整合估值结果
+    4. 生成详细的估值报告
+    """
 
     data = state["data"]
     end_date = data["end_date"]
@@ -168,7 +180,11 @@ def calculate_owner_earnings_value(
     margin_of_safety: float = 0.25,
     num_years: int = 5,
 ) -> float:
-    """Buffett owner‑earnings valuation with margin‑of‑safety."""
+    """
+    巴菲特所有者收益估值法,包含安全边际
+    
+    所有者收益 = 净利润 + 折旧 - 维护性资本支出
+    """
     if not all(isinstance(x, (int, float)) for x in [net_income, depreciation, capex, working_capital_change]):
         return 0
 
@@ -198,7 +214,9 @@ def calculate_intrinsic_value(
     terminal_growth_rate: float = 0.02,
     num_years: int = 5,
 ) -> float:
-    """Classic DCF on FCF with constant growth and terminal value."""
+    """
+    基于自由现金流的经典DCF估值,包含永续增长和终值
+    """
     if free_cash_flow is None or free_cash_flow <= 0:
         return 0
 
@@ -216,7 +234,9 @@ def calculate_intrinsic_value(
 
 
 def calculate_ev_ebitda_value(financial_metrics: list):
-    """Implied equity value via median EV/EBITDA multiple."""
+    """
+    基于中位数EV/EBITDA倍数的隐含权益价值
+    """
     if not financial_metrics:
         return 0
     m0 = financial_metrics[0]
@@ -243,7 +263,11 @@ def calculate_residual_income_value(
     terminal_growth_rate: float = 0.03,
     num_years: int = 5,
 ):
-    """Residual Income Model (Edwards‑Bell‑Ohlson)."""
+    """
+    剩余收益模型(Edwards-Bell-Ohlson)
+    
+    基于账面价值和超额收益的现值计算公司价值
+    """
     if not (market_cap and net_income and price_to_book_ratio and price_to_book_ratio > 0):
         return 0
 

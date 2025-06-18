@@ -1,22 +1,22 @@
-# For running LLMs hosted by anthropic (claude-3-5-sonnet, claude-3-opus, claude-3-5-haiku)
-# Get your Anthropic API key from https://anthropic.com/
+# 用于运行由 Anthropic 托管的 LLM 模型 (claude-3-5-sonnet, claude-3-opus, claude-3-5-haiku)
+# 从 https://anthropic.com/ 获取您的 Anthropic API 密钥
 ANTHROPIC_API_KEY=your-anthropic-api-key
-# For running LLMs hosted by deepseek (deepseek-chat, deepseek-reasoner, etc.)
-# Get your DeepSeek API key from https://deepseek.com/
+# 用于运行由 DeepSeek 托管的 LLM 模型 (deepseek-chat, deepseek-reasoner 等)
+# 从 https://deepseek.com/ 获取您的 DeepSeek API 密钥
 DEEPSEEK_API_KEY=your-deepseek-api-key
 
-# For running LLMs hosted by groq (deepseek, llama3, etc.)
-# Get your Groq API key from https://groq.com/
+# 用于运行由 Groq 托管的 LLM 模型 (deepseek, llama3 等)
+# 从 https://groq.com/ 获取您的 Groq API 密钥
 GROQ_API_KEY=your-groq-api-key
 
-# For running LLMs hosted by gemini (gemini-2.0-flash, gemini-2.0-pro)
-# Get your Google API key from https://console.cloud.google.com/
+# 用于运行由 Gemini 托管的 LLM 模型 (gemini-2.0-flash, gemini-2.0-pro)
+# 从 https://console.cloud.google.com/ 获取您的 Google API 密钥
 GOOGLE_API_KEY=your-google-api-key
-# For getting financial data to power the hedge fund
-# Get your Financial Datasets API key from https://financialdatasets.ai/
+# 用于获取对冲基金所需的金融数据
+# 从 https://financialdatasets.ai/ 获取您的金融数据集 API 密钥
 FINANCIAL_DATASETS_API_KEY=your-financial-datasets-api-key
-# For running LLMs hosted by openai (gpt-4o, gpt-4o-mini, etc.)
-# Get your OpenAI API key from https://platform.openai.com/
+# 用于运行由 OpenAI 托管的 LLM 模型 (gpt-4o, gpt-4o-mini 等)
+# 从 https://platform.openai.com/ 获取您的 OpenAI API 密钥
 # OPENAI_API_KEY=your-openai-api-key
 OPENAI_API_KEY="tk_ssj_1qaz2wsx#EDC"
 OPENAI_API_BASE=http://192.168.7.112:9080

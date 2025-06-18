@@ -1,3 +1,14 @@
+"""
+比尔·阿克曼投资策略分析代理
+该模块实现了基于阿克曼投资理念的股票分析系统。主要关注:
+1. 寻找优质企业和持久竞争优势
+2. 重视长期稳定的现金流和增长潜力
+3. 倡导强大的财务纪律(合理杠杆、高效资本配置)
+4. 估值很重要:以安全边际为目标的内在价值
+5. 在管理层或运营改善可以释放巨大上升空间的地方考虑积极主义
+6. 集中于少数高确信度投资
+"""
+
 from langchain_openai import ChatOpenAI
 from src.graph.state import AgentState, show_agent_reasoning
 from src.tools.api import get_financial_metrics, get_market_cap, search_line_items
@@ -11,6 +22,13 @@ from src.utils.llm import call_llm
 
 
 class BillAckmanSignal(BaseModel):
+    """
+    比尔·阿克曼风格的输出信号容器
+    包含:
+    - signal: 看涨/看跌/中性信号
+    - confidence: 置信度(0-100)
+    - reasoning: 推理说明
+    """
     signal: Literal["bullish", "bearish", "neutral"]
     confidence: float
     reasoning: str
@@ -18,9 +36,9 @@ class BillAckmanSignal(BaseModel):
 
 def bill_ackman_agent(state: AgentState):
     """
-    Analyzes stocks using Bill Ackman's investing principles and LLM reasoning.
-    Fetches multiple periods of data for a more robust long-term view.
-    Incorporates brand/competitive advantage, activism potential, and other key factors.
+    使用比尔·阿克曼的投资原则和LLM推理分析股票。
+    获取多个时期的数据以获得更稳健的长期视角。
+    考虑品牌/竞争优势、积极主义潜力和其他关键因素。
     """
     data = state["data"]
     end_date = data["end_date"]
@@ -133,9 +151,9 @@ def bill_ackman_agent(state: AgentState):
 
 def analyze_business_quality(metrics: list, financial_line_items: list) -> dict:
     """
-    Analyze whether the company has a high-quality business with stable or growing cash flows,
-    durable competitive advantages (moats), and potential for long-term growth.
-    Also tries to infer brand strength if intangible_assets data is present (optional).
+    分析公司是否具有高质量业务,包括稳定或增长的现金流、
+    持久竞争优势(护城河)和长期增长潜力。
+    如果有无形资产数据,也尝试推断品牌实力(可选)。
     """
     score = 0
     details = []
@@ -211,9 +229,9 @@ def analyze_business_quality(metrics: list, financial_line_items: list) -> dict:
 
 def analyze_financial_discipline(metrics: list, financial_line_items: list) -> dict:
     """
-    Evaluate the company's balance sheet over multiple periods:
-    - Debt ratio trends
-    - Capital returns to shareholders over time (dividends, buybacks)
+    评估公司在多个时期的资产负债表:
+    - 债务比率趋势
+    - 随时间推移对股东的资本回报(股息、回购)
     """
     score = 0
     details = []
@@ -286,12 +304,12 @@ def analyze_financial_discipline(metrics: list, financial_line_items: list) -> d
 
 def analyze_activism_potential(financial_line_items: list) -> dict:
     """
-    Bill Ackman often engages in activism if a company has a decent brand or moat
-    but is underperforming operationally.
-    
-    We'll do a simplified approach:
-    - Look for positive revenue trends but subpar margins
-    - That may indicate 'activism upside' if operational improvements could unlock value.
+    如果一家公司有不错的品牌或护城河但运营表现不佳,
+    比尔·阿克曼经常会进行积极主义。
+
+    我们将采用简化方法:
+    - 寻找收入趋势积极但利润率不佳的情况
+    - 这可能表明如果运营改善可以释放价值,存在"积极主义上升空间"
     """
     if not financial_line_items:
         return {
@@ -331,8 +349,8 @@ def analyze_activism_potential(financial_line_items: list) -> dict:
 
 def analyze_valuation(financial_line_items: list, market_cap: float) -> dict:
     """
-    Ackman invests in companies trading at a discount to intrinsic value.
-    Uses a simplified DCF with FCF as a proxy, plus margin of safety analysis.
+    阿克曼投资于相对于内在价值有折价的公司。
+    使用以FCF为代理的简化DCF,加上安全边际分析。
     """
     if not financial_line_items or market_cap is None:
         return {
@@ -400,9 +418,9 @@ def generate_ackman_output(
     model_provider: str,
 ) -> BillAckmanSignal:
     """
-    Generates investment decisions in the style of Bill Ackman.
-    Includes more explicit references to brand strength, activism potential, 
-    catalysts, and management changes in the system prompt.
+    以比尔·阿克曼的风格生成投资决策。
+    在系统提示中更明确地提及品牌实力、积极主义潜力、
+    催化剂和管理层变更。
     """
     template = ChatPromptTemplate.from_messages([
         (

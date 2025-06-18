@@ -1,3 +1,15 @@
+"""
+彼得·林奇投资策略分析代理
+该模块实现了基于彼得·林奇投资理念的股票分析系统。主要关注:
+1. 投资于你了解的企业(清晰、可理解的业务)
+2. 合理价格增长(GARP)策略,重点关注PEG比率
+3. 寻找持续的收入和每股收益增长,以及可控的债务
+4. 关注潜在的"十倍股"(高增长机会)
+5. 避免过于复杂或高杠杆的企业
+6. 使用新闻情绪和内部交易作为次要输入
+7. 如果基本面强烈符合GARP,则更积极进取
+"""
+
 from src.graph.state import AgentState, show_agent_reasoning
 from src.tools.api import (
     get_financial_metrics,
@@ -18,7 +30,11 @@ from src.utils.llm import call_llm
 
 class PeterLynchSignal(BaseModel):
     """
-    Container for the Peter Lynch-style output signal.
+    彼得·林奇风格的输出信号容器
+    包含:
+    - signal: 看涨/看跌/中性信号
+    - confidence: 置信度(0-100)
+    - reasoning: 推理说明
     """
     signal: Literal["bullish", "bearish", "neutral"]
     confidence: float
@@ -27,17 +43,16 @@ class PeterLynchSignal(BaseModel):
 
 def peter_lynch_agent(state: AgentState):
     """
-    Analyzes stocks using Peter Lynch's investing principles:
-      - Invest in what you know (clear, understandable businesses).
-      - Growth at a Reasonable Price (GARP), emphasizing the PEG ratio.
-      - Look for consistent revenue & EPS increases and manageable debt.
-      - Be alert for potential "ten-baggers" (high-growth opportunities).
-      - Avoid overly complex or highly leveraged businesses.
-      - Use news sentiment and insider trades for secondary inputs.
-      - If fundamentals strongly align with GARP, be more aggressive.
+    使用彼得·林奇的投资原则分析股票:
+    - 投资于你了解的企业(清晰、可理解的业务)
+    - 合理价格增长(GARP),重点关注PEG比率
+    - 寻找持续的收入和每股收益增长,以及可控的债务
+    - 关注潜在的"十倍股"(高增长机会)
+    - 避免过于复杂或高杠杆的企业
+    - 使用新闻情绪和内部交易作为次要输入
+    - 如果基本面强烈符合GARP,则更积极进取
 
-    The result is a bullish/bearish/neutral signal, along with a
-    confidence (0–100) and a textual reasoning explanation.
+    返回看涨/看跌/中性信号,以及0-100的置信度和文字推理说明。
     """
 
     data = state["data"]
@@ -165,11 +180,10 @@ def peter_lynch_agent(state: AgentState):
 
 def analyze_lynch_growth(financial_line_items: list) -> dict:
     """
-    Evaluate growth based on revenue and EPS trends:
-      - Consistent revenue growth
-      - Consistent EPS growth
-    Peter Lynch liked companies with steady, understandable growth,
-    often searching for potential 'ten-baggers' with a long runway.
+    基于收入和每股收益趋势评估增长:
+    - 持续的收入增长
+    - 持续的每股收益增长
+    彼得·林奇喜欢稳定、可理解的增长,经常寻找潜在的"十倍股"。
     """
     if not financial_line_items or len(financial_line_items) < 2:
         return {"score": 0, "details": "Insufficient financial data for growth analysis"}
@@ -230,11 +244,11 @@ def analyze_lynch_growth(financial_line_items: list) -> dict:
 
 def analyze_lynch_fundamentals(financial_line_items: list) -> dict:
     """
-    Evaluate basic fundamentals:
-      - Debt/Equity
-      - Operating margin (or gross margin)
-      - Positive Free Cash Flow
-    Lynch avoided heavily indebted or complicated businesses.
+    评估基本面:
+    - 债务/权益比
+    - 营业利润率(或毛利率)
+    - 正自由现金流
+    林奇避免高负债或复杂的企业。
     """
     if not financial_line_items:
         return {"score": 0, "details": "Insufficient fundamentals data"}
@@ -293,10 +307,10 @@ def analyze_lynch_fundamentals(financial_line_items: list) -> dict:
 
 def analyze_lynch_valuation(financial_line_items: list, market_cap: float | None) -> dict:
     """
-    Peter Lynch's approach to 'Growth at a Reasonable Price' (GARP):
-      - Emphasize the PEG ratio: (P/E) / Growth Rate
-      - Also consider a basic P/E if PEG is unavailable
-    A PEG < 1 is very attractive; 1-2 is fair; >2 is expensive.
+    彼得·林奇的"合理价格增长"(GARP)方法:
+    - 重点关注PEG比率: (市盈率) / 增长率
+    - 如果PEG不可用,也考虑基本市盈率
+    PEG < 1非常有吸引力; 1-2合理; >2昂贵。
     """
     if not financial_line_items or market_cap is None:
         return {"score": 0, "details": "Insufficient data for valuation"}
@@ -362,7 +376,7 @@ def analyze_lynch_valuation(financial_line_items: list, market_cap: float | None
 
 def analyze_sentiment(news_items: list) -> dict:
     """
-    Basic news sentiment check. Negative headlines weigh on the final score.
+    基本新闻情绪检查。负面新闻会降低最终得分。
     """
     if not news_items:
         return {"score": 5, "details": "No news data; default to neutral sentiment"}
@@ -393,10 +407,10 @@ def analyze_sentiment(news_items: list) -> dict:
 
 def analyze_insider_activity(insider_trades: list) -> dict:
     """
-    Simple insider-trade analysis:
-      - If there's heavy insider buying, it's a positive sign.
-      - If there's mostly selling, it's a negative sign.
-      - Otherwise, neutral.
+    简单的内部交易分析:
+    - 如果有大量内部购买,是积极信号
+    - 如果主要是卖出,是消极信号
+    - 否则,中性
     """
     # Default 5 (neutral)
     score = 5
@@ -443,7 +457,7 @@ def generate_lynch_output(
     model_provider: str,
 ) -> PeterLynchSignal:
     """
-    Generates a final JSON signal in Peter Lynch's voice & style.
+    以彼得·林奇的风格和语气生成最终的JSON信号。
     """
     template = ChatPromptTemplate.from_messages(
         [

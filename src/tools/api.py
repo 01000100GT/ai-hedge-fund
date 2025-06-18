@@ -1,3 +1,10 @@
+"""
+API工具模块
+该模块提供了与金融数据API交互的工具函数，
+包括获取价格数据、财务指标、内部交易、公司新闻等功能。
+实现了数据缓存和请求重试机制，确保数据获取的可靠性。
+"""
+
 import datetime
 import os
 import pandas as pd
@@ -53,7 +60,17 @@ if api_key := os.environ.get("FINANCIAL_DATASETS_API_KEY"):
 # --- Financial Data API Functions (使用 Session) ---
 
 def get_prices(ticker: str, start_date: str, end_date: str) -> list[Price]:
-    """Fetch price data from cache or API using a session with retries."""
+    """
+    获取股票价格数据
+    从缓存或API获取指定时间范围内的价格数据
+    
+    Args:
+        ticker: 股票代码
+        start_date: 开始日期
+        end_date: 结束日期
+    Returns:
+        返回价格数据列表
+    """
     # Check cache first
     if cached_data := _cache.get_prices(ticker):
         # Filter cached data by date range and convert to Price objects
@@ -91,7 +108,18 @@ def get_financial_metrics(
     period: str = "ttm",
     limit: int = 10,
 ) -> list[FinancialMetrics]:
-    """Fetch financial metrics from cache or API using a session with retries."""
+    """
+    获取财务指标数据
+    从缓存或API获取指定公司的财务指标数据
+    
+    Args:
+        ticker: 股票代码
+        end_date: 结束日期
+        period: 报告期间类型
+        limit: 返回结果数量限制
+    Returns:
+        返回财务指标数据列表
+    """
     # Check cache first
     if cached_data := _cache.get_financial_metrics(ticker):
         # Filter cached data by date and limit
@@ -130,7 +158,19 @@ def search_line_items(
     period: str = "ttm",
     limit: int = 10,
 ) -> list[LineItem]:
-    """Fetch line items from API using a session with retries."""
+    """
+    搜索财务报表行项目
+    从API获取指定公司的财务报表行项目数据
+    
+    Args:
+        ticker: 股票代码
+        line_items: 需要搜索的行项目列表
+        end_date: 结束日期
+        period: 报告期间类型
+        limit: 返回结果数量限制
+    Returns:
+        返回行项目数据列表
+    """
     url = "https://api.financialdatasets.ai/financials/search/line-items"
     body = {
         "tickers": [ticker],
@@ -163,7 +203,18 @@ def get_insider_trades(
     start_date: str | None = None,
     limit: int = 1000,
 ) -> list[InsiderTrade]:
-    """Fetch insider trades from cache or API using a session with retries."""
+    """
+    获取内部交易数据
+    从缓存或API获取指定公司的内部交易数据
+    
+    Args:
+        ticker: 股票代码
+        end_date: 结束日期
+        start_date: 开始日期
+        limit: 返回结果数量限制
+    Returns:
+        返回内部交易数据列表
+    """
     # Check cache first
     if cached_data := _cache.get_insider_trades(ticker):
         # Filter cached data by date range
@@ -225,7 +276,18 @@ def get_company_news(
     start_date: str | None = None,
     limit: int = 1000,
 ) -> list[CompanyNews]:
-    """Fetch company news from cache or API using a session with retries."""
+    """
+    获取公司新闻数据
+    从缓存或API获取指定公司的新闻数据
+    
+    Args:
+        ticker: 股票代码
+        end_date: 结束日期
+        start_date: 开始日期
+        limit: 返回结果数量限制
+    Returns:
+        返回公司新闻数据列表
+    """
     # 添加: 在每次调用前强制等待 1 秒，进行简单的节流
     print(f"[API Throttling] Waiting 1 second before fetching news for {ticker}...")
     time.sleep(1)
@@ -288,7 +350,16 @@ def get_market_cap(
     ticker: str,
     end_date: str,
 ) -> float | None:
-    """Fetch market cap from the API using a session with retries."""
+    """
+    获取市值数据
+    从API获取指定公司的市值数据
+    
+    Args:
+        ticker: 股票代码
+        end_date: 结束日期
+    Returns:
+        返回市值数据，如果获取失败则返回None
+    """
     # Check if end_date is today
     if end_date == datetime.datetime.now().strftime("%Y-%m-%d"):
         url = f"https://api.financialdatasets.ai/company/facts/?ticker={ticker}"
@@ -318,7 +389,14 @@ def get_market_cap(
 
 
 def prices_to_df(prices: list[Price]) -> pd.DataFrame:
-    """Convert prices to a DataFrame."""
+    """
+    将价格数据转换为DataFrame格式
+    
+    Args:
+        prices: 价格数据列表
+    Returns:
+        返回DataFrame格式的价格数据
+    """
     df = pd.DataFrame([p.model_dump() for p in prices])
     df["Date"] = pd.to_datetime(df["time"])
     df.set_index("Date", inplace=True)
@@ -331,5 +409,15 @@ def prices_to_df(prices: list[Price]) -> pd.DataFrame:
 
 # Update the get_price_data function to use the new functions
 def get_price_data(ticker: str, start_date: str, end_date: str) -> pd.DataFrame:
+    """
+    获取价格数据并转换为DataFrame格式
+    
+    Args:
+        ticker: 股票代码
+        start_date: 开始日期
+        end_date: 结束日期
+    Returns:
+        返回DataFrame格式的价格数据
+    """
     prices = get_prices(ticker, start_date, end_date)
     return prices_to_df(prices)

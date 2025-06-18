@@ -1,3 +1,14 @@
+"""
+斯坦利·德鲁肯米勒投资策略代理
+
+该模块实现了基于德鲁肯米勒投资原则的股票分析系统。
+德鲁肯米勒强调:
+1. 寻找非对称风险收益机会
+2. 重视增长、动量和市场情绪
+3. 在条件有利时愿意采取激进策略
+4. 通过避免高风险低回报的押注来保护资本
+"""
+
 from src.graph.state import AgentState, show_agent_reasoning
 from src.tools.api import (
     get_financial_metrics,
@@ -18,6 +29,14 @@ import statistics
 
 
 class StanleyDruckenmillerSignal(BaseModel):
+    """
+    德鲁肯米勒投资信号模型
+    
+    属性:
+        signal: 投资信号 - 看涨/看跌/中性
+        confidence: 信心水平 0-100
+        reasoning: 决策理由说明
+    """
     signal: Literal["bullish", "bearish", "neutral"]
     confidence: float
     reasoning: str
@@ -25,13 +44,15 @@ class StanleyDruckenmillerSignal(BaseModel):
 
 def stanley_druckenmiller_agent(state: AgentState):
     """
-    Analyzes stocks using Stanley Druckenmiller's investing principles:
-      - Seeking asymmetric risk-reward opportunities
-      - Emphasizing growth, momentum, and sentiment
-      - Willing to be aggressive if conditions are favorable
-      - Focus on preserving capital by avoiding high-risk, low-reward bets
-
-    Returns a bullish/bearish/neutral signal with confidence and reasoning.
+    德鲁肯米勒投资策略代理主函数
+    
+    使用德鲁肯米勒的投资原则分析股票:
+    1. 寻找非对称风险收益机会
+    2. 重视增长、动量和市场情绪
+    3. 在条件有利时愿意采取激进策略
+    4. 通过避免高风险低回报的押注来保护资本
+    
+    返回带有信心水平和理由说明的看涨/看跌/中性信号。
     """
     data = state["data"]
     start_date = data["start_date"]
@@ -161,10 +182,10 @@ def stanley_druckenmiller_agent(state: AgentState):
 
 def analyze_growth_and_momentum(financial_line_items: list, prices: list) -> dict:
     """
-    Evaluate:
-      - Revenue Growth (YoY)
-      - EPS Growth (YoY)
-      - Price Momentum
+    评估增长和动量:
+    1. 收入增长(同比)
+    2. 每股收益增长(同比)
+    3. 价格动量
     """
     if not financial_line_items or len(financial_line_items) < 2:
         return {"score": 0, "details": "Insufficient financial data for growth analysis"}
@@ -264,10 +285,10 @@ def analyze_growth_and_momentum(financial_line_items: list, prices: list) -> dic
 
 def analyze_insider_activity(insider_trades: list) -> dict:
     """
-    Simple insider-trade analysis:
-      - If there's heavy insider buying, we nudge the score up.
-      - If there's mostly selling, we reduce it.
-      - Otherwise, neutral.
+    简单的内部交易分析:
+    - 如果有大量内部人员买入,提高得分
+    - 如果主要是卖出,降低得分
+    - 否则保持中性
     """
     # Default is neutral (5/10).
     score = 5
@@ -311,7 +332,8 @@ def analyze_insider_activity(insider_trades: list) -> dict:
 
 def analyze_sentiment(news_items: list) -> dict:
     """
-    Basic news sentiment: negative keyword check vs. overall volume.
+    基本新闻情绪分析:
+    对比负面关键词检查与整体新闻量。
     """
     if not news_items:
         return {"score": 5, "details": "No news data; defaulting to neutral sentiment"}
@@ -342,10 +364,10 @@ def analyze_sentiment(news_items: list) -> dict:
 
 def analyze_risk_reward(financial_line_items: list, prices: list) -> dict:
     """
-    Assesses risk via:
-      - Debt-to-Equity
-      - Price Volatility
-    Aims for strong upside with contained downside.
+    评估风险收益:
+    - 债务权益比
+    - 价格波动性
+    追求高上行空间,同时控制下行风险。
     """
     if not financial_line_items or not prices:
         return {"score": 0, "details": "Insufficient data for risk-reward analysis"}
@@ -416,12 +438,14 @@ def analyze_risk_reward(financial_line_items: list, prices: list) -> dict:
 
 def analyze_druckenmiller_valuation(financial_line_items: list, market_cap: float | None) -> dict:
     """
-    Druckenmiller is willing to pay up for growth, but still checks:
-      - P/E
-      - P/FCF
-      - EV/EBIT
-      - EV/EBITDA
-    Each can yield up to 2 points => max 8 raw points => scale to 0–10.
+    德鲁肯米勒风格的估值分析
+    
+    德鲁肯米勒愿意为增长付费,但仍会检查:
+    - 市盈率(P/E)
+    - 市现率(P/FCF)
+    - EV/EBIT
+    - EV/EBITDA
+    每个指标最多2分 => 最高8分原始分 => 换算为0-10分。
     """
     if not financial_line_items or market_cap is None:
         return {"score": 0, "details": "Insufficient data to perform valuation"}
@@ -525,7 +549,7 @@ def generate_druckenmiller_output(
     model_provider: str,
 ) -> StanleyDruckenmillerSignal:
     """
-    Generates a JSON signal in the style of Stanley Druckenmiller.
+    生成德鲁肯米勒风格的JSON格式投资信号。
     """
     template = ChatPromptTemplate.from_messages(
         [

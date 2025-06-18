@@ -1,3 +1,16 @@
+"""
+沃伦·巴菲特投资策略代理
+
+该模块实现了基于巴菲特投资原则的股票分析系统。
+巴菲特强调:
+1. 在能力圈内投资
+2. 寻找具有安全边际的投资机会
+3. 关注企业护城河
+4. 重视管理层质量
+5. 财务实力
+6. 长期投资视角
+"""
+
 from src.graph.state import AgentState, show_agent_reasoning
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage
@@ -10,13 +23,29 @@ from src.utils.progress import progress
 
 
 class WarrenBuffettSignal(BaseModel):
+    """
+    巴菲特投资信号模型
+    
+    属性:
+        signal: 投资信号 - 看涨/看跌/中性
+        confidence: 信心水平 0-100
+        reasoning: 决策理由说明
+    """
     signal: Literal["bullish", "bearish", "neutral"]
     confidence: float
     reasoning: str
 
 
 def warren_buffett_agent(state: AgentState):
-    """Analyzes stocks using Buffett's principles and LLM reasoning."""
+    """
+    巴菲特投资策略代理主函数
+    
+    使用巴菲特的投资原则和LLM推理分析股票。主要关注:
+    1. 企业质量和护城河
+    2. 管理层诚信和能力
+    3. 财务实力和稳定性
+    4. 合理的估值和安全边际
+    """
     data = state["data"]
     end_date = data["end_date"]
     tickers = data["tickers"]
@@ -135,7 +164,13 @@ def warren_buffett_agent(state: AgentState):
 
 
 def analyze_fundamentals(metrics: list) -> dict[str, any]:
-    """Analyze company fundamentals based on Buffett's criteria."""
+    """
+    基于巴菲特标准分析公司基本面:
+    - ROE(股本回报率)
+    - 债务权益比
+    - 营业利润率
+    - 流动比率
+    """
     if not metrics:
         return {"score": 0, "details": "Insufficient fundamental data"}
 
@@ -184,7 +219,12 @@ def analyze_fundamentals(metrics: list) -> dict[str, any]:
 
 
 def analyze_consistency(financial_line_items: list) -> dict[str, any]:
-    """Analyze earnings consistency and growth."""
+    """
+    分析收益的一致性和增长:
+    - 检查收益增长趋势
+    - 计算总体增长率
+    - 评估增长的稳定性
+    """
     if len(financial_line_items) < 4:  # Need at least 4 periods for trend analysis
         return {"score": 0, "details": "Insufficient historical data"}
 
@@ -218,9 +258,10 @@ def analyze_consistency(financial_line_items: list) -> dict[str, any]:
 
 def analyze_moat(metrics: list) -> dict[str, any]:
     """
-    Evaluate whether the company likely has a durable competitive advantage (moat).
-    For simplicity, we look at stability of ROE/operating margins over multiple periods
-    or high margin over the last few years. Higher stability => higher moat score.
+    评估公司是否具有持久竞争优势(护城河)
+    
+    通过观察ROE和营业利润率的稳定性来评估。
+    更高的稳定性表明更强的护城河。
     """
     if not metrics or len(metrics) < 3:
         return {"score": 0, "max_score": 3, "details": "Insufficient data for moat analysis"}
@@ -268,11 +309,11 @@ def analyze_moat(metrics: list) -> dict[str, any]:
 
 def analyze_management_quality(financial_line_items: list) -> dict[str, any]:
     """
-    Checks for share dilution or consistent buybacks, and some dividend track record.
-    A simplified approach:
-      - if there's net share repurchase or stable share count, it suggests management
-        might be shareholder-friendly.
-      - if there's a big new issuance, it might be a negative sign (dilution).
+    检查股份稀释或回购情况,以及股息记录
+    
+    简化方法:
+    - 如果有净股份回购或稳定的股数,说明管理层可能对股东友好
+    - 如果有大规模新发行,可能是负面信号(稀释)
     """
     if not financial_line_items:
         return {"score": 0, "max_score": 2, "details": "Insufficient data for management analysis"}
@@ -307,8 +348,11 @@ def analyze_management_quality(financial_line_items: list) -> dict[str, any]:
 
 
 def calculate_owner_earnings(financial_line_items: list) -> dict[str, any]:
-    """Calculate owner earnings (Buffett's preferred measure of true earnings power).
-    Owner Earnings = Net Income + Depreciation - Maintenance CapEx"""
+    """
+    计算所有者收益(巴菲特衡量真实盈利能力的首选指标)
+    
+    所有者收益 = 净利润 + 折旧 - 维护性资本支出
+    """
     if not financial_line_items or len(financial_line_items) < 1:
         return {"owner_earnings": None, "details": ["Insufficient data for owner earnings calculation"]}
 
@@ -333,7 +377,9 @@ def calculate_owner_earnings(financial_line_items: list) -> dict[str, any]:
 
 
 def calculate_intrinsic_value(financial_line_items: list) -> dict[str, any]:
-    """Calculate intrinsic value using DCF with owner earnings."""
+    """
+    使用所有者收益的DCF方法计算内在价值
+    """
     if not financial_line_items:
         return {"intrinsic_value": None, "details": ["Insufficient data for valuation"]}
 
@@ -388,7 +434,9 @@ def generate_buffett_output(
     model_name: str,
     model_provider: str,
 ) -> WarrenBuffettSignal:
-    """Get investment decision from LLM with Buffett's principles"""
+    """
+    从LLM获取基于巴菲特原则的投资决策
+    """
     template = ChatPromptTemplate.from_messages(
         [
             (

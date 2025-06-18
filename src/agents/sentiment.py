@@ -1,3 +1,13 @@
+"""
+市场情绪分析代理
+
+该模块负责:
+1. 分析市场情绪并生成交易信号
+2. 整合内部交易数据和公司新闻
+3. 计算加权情绪得分
+4. 生成详细的情绪分析报告
+"""
+
 from langchain_core.messages import HumanMessage
 from src.graph.state import AgentState, show_agent_reasoning
 from src.utils.progress import progress
@@ -8,9 +18,17 @@ import json
 from src.tools.api import get_insider_trades, get_company_news
 
 
-##### Sentiment Agent #####
 def sentiment_agent(state: AgentState):
-    """Analyzes market sentiment and generates trading signals for multiple tickers."""
+    """
+    市场情绪分析代理主函数
+    
+    分析市场情绪并为多个股票生成交易信号。主要职责:
+    1. 获取内部交易数据
+    2. 分析交易模式
+    3. 获取并分析公司新闻
+    4. 结合多个信号源生成整体情绪评估
+    5. 计算加权信号和信心水平
+    """
     data = state.get("data", {})
     end_date = data.get("end_date")
     tickers = data.get("tickers")
@@ -46,8 +64,8 @@ def sentiment_agent(state: AgentState):
         
         progress.update_status("sentiment_agent", ticker, "Combining signals")
         # Combine signals from both sources with weights
-        insider_weight = 0.3
-        news_weight = 0.7
+        insider_weight = 0.3  # 内部交易权重
+        news_weight = 0.7    # 新闻情绪权重
         
         # Calculate weighted signal counts
         bullish_signals = (
@@ -71,7 +89,7 @@ def sentiment_agent(state: AgentState):
         confidence = 0  # Default confidence when there are no signals
         if total_weighted_signals > 0:
             confidence = round(max(bullish_signals, bearish_signals) / total_weighted_signals, 2) * 100
-        reasoning = f"Weighted Bullish signals: {bullish_signals:.1f}, Weighted Bearish signals: {bearish_signals:.1f}"
+        reasoning = f"加权看涨信号: {bullish_signals:.1f}, 加权看跌信号: {bearish_signals:.1f}"
 
         sentiment_analysis[ticker] = {
             "signal": overall_signal,
