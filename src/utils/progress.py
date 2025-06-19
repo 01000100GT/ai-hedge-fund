@@ -1,5 +1,6 @@
 """用于管理多个代理进度跟踪的工具。"""
 
+from datetime import datetime, timezone
 from rich.console import Console
 from rich.live import Live
 from rich.table import Table
@@ -42,7 +43,7 @@ class AgentProgress:
             self.live.stop()
             self.started = False
 
-    def update_status(self, agent_name: str, ticker: Optional[str] = None, status: str = ""):
+    def update_status(self, agent_name: str, ticker: Optional[str] = None, status: str = "", analysis: Optional[str] = None):
         """更新代理的状态。"""
         if agent_name not in self.agent_status:
             self.agent_status[agent_name] = {"status": "", "ticker": None}
@@ -51,10 +52,16 @@ class AgentProgress:
             self.agent_status[agent_name]["ticker"] = ticker
         if status:
             self.agent_status[agent_name]["status"] = status
+        if analysis:
+            self.agent_status[agent_name]["analysis"] = analysis
+
+        # Set the timestamp as UTC datetime
+        timestamp = datetime.now(timezone.utc).isoformat()
+        self.agent_status[agent_name]["timestamp"] = timestamp
 
         # 通知所有注册的处理程序
         for handler in self.update_handlers:
-            handler(agent_name, ticker, status)
+            handler(agent_name, ticker, status, analysis, timestamp)
 
         self._refresh_display()
 

@@ -139,7 +139,7 @@ fi
 
 # 如果提供了 'build' 命令则构建 Docker 镜像
 if [ "$COMMAND" = "build" ]; then
-  docker build -t ai-hedge-fund .
+  docker build -t ai-hedge-fund -f Dockerfile ..
   exit 0
 fi
 

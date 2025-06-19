@@ -68,7 +68,7 @@ def portfolio_management_agent(state: AgentState):
     max_shares = {}
     signals_by_ticker = {}
     for ticker in tickers:
-        progress.update_status("portfolio_management_agent", ticker, "Processing analyst signals")
+        progress.update_status("portfolio_manager", ticker, "Processing analyst signals")
 
         # Get position limits and current prices for the ticker
         risk_data = analyst_signals.get("risk_management_agent", {}).get(ticker, {})
@@ -88,7 +88,7 @@ def portfolio_management_agent(state: AgentState):
                 ticker_signals[agent] = {"signal": signals[ticker]["signal"], "confidence": signals[ticker]["confidence"]}
         signals_by_ticker[ticker] = ticker_signals
 
-    progress.update_status("portfolio_management_agent", None, "Generating trading decisions")
+    progress.update_status("portfolio_manager", None, "Generating trading decisions")
 
     # Generate the trading decision
     result = generate_trading_decision(
@@ -97,19 +97,20 @@ def portfolio_management_agent(state: AgentState):
         current_prices=current_prices,
         max_shares=max_shares,
         portfolio=portfolio,
-        model_name=state["metadata"]["model_name"],
-        model_provider=state["metadata"]["model_provider"],
+        state=state,
     )
 
     # Create the portfolio management message
     message = HumanMessage(
         content=json.dumps({ticker: decision.model_dump() for ticker, decision in result.decisions.items()}),
-        name="portfolio_management",
+        name="portfolio_manager",
     )
 
     # Print the decision if the flag is set
     if state["metadata"]["show_reasoning"]:
-        show_agent_reasoning({ticker: decision.model_dump() for ticker, decision in result.decisions.items()}, "Portfolio Management Agent")
+        show_agent_reasoning({ticker: decision.model_dump() for ticker, decision in result.decisions.items()}, "Portfolio Manager")
+
+    progress.update_status("portfolio_manager", None, "Done")
 
     return {
         "messages": state["messages"] + [message],
@@ -123,8 +124,7 @@ def generate_trading_decision(
     current_prices: dict[str, float],
     max_shares: dict[str, int],
     portfolio: dict[str, float],
-    model_name: str,
-    model_provider: str,
+    state: AgentState,
 ) -> PortfolioManagerOutput:
     """
     尝试从LLM获取交易决策,包含重试逻辑
@@ -237,4 +237,10 @@ def generate_trading_decision(
     def create_default_portfolio_output():
         return PortfolioManagerOutput(decisions={ticker: PortfolioDecision(action="hold", quantity=0, confidence=0.0, reasoning="Error in portfolio management, defaulting to hold") for ticker in tickers})
 
-    return call_llm(prompt=prompt, model_name=model_name, model_provider=model_provider, pydantic_model=PortfolioManagerOutput, agent_name="portfolio_management_agent", default_factory=create_default_portfolio_output)
+    return call_llm(
+        prompt=prompt,
+        pydantic_model=PortfolioManagerOutput,
+        agent_name="portfolio_manager",
+        state=state,
+        default_factory=create_default_portfolio_output,
+    )

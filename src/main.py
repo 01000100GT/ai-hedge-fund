@@ -251,8 +251,7 @@ def create_workflow(selected_analysts=None):
     # Always add risk and portfolio management
     # 总是添加风险管理 Agent 节点。
     workflow.add_node("risk_management_agent", risk_management_agent)
-    # 总是添加投资组合管理 Agent 节点。
-    workflow.add_node("portfolio_management_agent", portfolio_management_agent)
+    workflow.add_node("portfolio_manager", portfolio_management_agent)
 
     # Connect selected analysts to risk management
     # 将所有选择的分析师节点连接到风险管理节点。
@@ -262,10 +261,8 @@ def create_workflow(selected_analysts=None):
         # 添加从分析师节点到风险管理节点的边。
         workflow.add_edge(node_name, "risk_management_agent")
 
-    # 添加从风险管理节点到投资组合管理节点的边。
-    workflow.add_edge("risk_management_agent", "portfolio_management_agent")
-    # 添加从投资组合管理节点到结束节点 (END) 的边。
-    workflow.add_edge("portfolio_management_agent", END)
+    workflow.add_edge("risk_management_agent", "portfolio_manager")
+    workflow.add_edge("portfolio_manager", END)
 
     # 设置工作流的入口点为 "start_node"。
     workflow.set_entry_point("start_node")
@@ -285,8 +282,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--tickers",
         type=str,
-        default="AAPL,GOOGL,MSFT,NVDA,TSLA", # 添加默认值
-        help="Comma-separated list of stock ticker symbols. Defaults to AAPL,GOOGL,MSFT,NVDA,TSLA", # 更新帮助文本
+        default="AAPL,GOOGL,MSFT,NVDA,TSLA",  # 添加默认值
+        help="Comma-separated list of stock ticker symbols. Defaults to AAPL,GOOGL,MSFT,NVDA,TSLA",  # 更新帮助文本
     )
     # 添加 --start-date 参数，设置开始日期 (YYYY-MM-DD)，可选，默认为结束日期前3个月。
     parser.add_argument(
@@ -349,9 +346,8 @@ if __name__ == "__main__":
         print(f"\nSelected analysts: {', '.join(Fore.GREEN + choice.title().replace('_', ' ') + Style.RESET_ALL for choice in choices)}\n")
 
     # Select LLM model based on whether Ollama is being used
-    # 初始化模型选择和模型提供商为 None。
-    model_choice = None
-    model_provider = None
+    model_name = ""
+    model_provider = ""
 
     # 检查命令行参数是否包含 --ollama。
     if args.ollama:
@@ -359,10 +355,8 @@ if __name__ == "__main__":
         print(f"{Fore.CYAN}Using Ollama for local LLM inference.{Style.RESET_ALL}")
 
         # Select from Ollama-specific models
-        # 使用 questionary 显示选择列表，让用户选择 Ollama 模型。
-        model_choice = questionary.select(
-            "Select your Ollama model:",  # 提示信息
-            # 选项列表，从 OLLAMA_LLM_ORDER 构建。
+        model_name: str = questionary.select(
+            "Select your Ollama model:",
             choices=[questionary.Choice(display, value=value) for display, value, _ in OLLAMA_LLM_ORDER],
             # 设置交互界面的样式。
             style=questionary.Style(
@@ -376,45 +370,40 @@ if __name__ == "__main__":
             # 执行提问并等待用户选择。
         ).ask()
 
-        # 检查用户是否没有做出选择。
-        if not model_choice:
-            # 打印退出信息。
+        if not model_name:
             print("\n\nInterrupt received. Exiting...")
             # 退出程序。
             sys.exit(0)
 
+        if model_name == "-":
+            model_name = questionary.text("Enter the custom model name:").ask()
+            if not model_name:
+                print("\n\nInterrupt received. Exiting...")
+                sys.exit(0)
+
         # Ensure Ollama is installed, running, and the model is available
-        # 调用 ensure_ollama_and_model 检查 Ollama 服务状态和所选模型是否可用。
-        if not ensure_ollama_and_model(model_choice):
-            # 如果检查失败，打印错误信息。
+        if not ensure_ollama_and_model(model_name):
             print(f"{Fore.RED}Cannot proceed without Ollama and the selected model.{Style.RESET_ALL}")
             # 退出程序，返回错误码 1。
             sys.exit(1)
 
         # 设置模型提供商为 Ollama。
         model_provider = ModelProvider.OLLAMA.value
-        # 打印用户选择的 Ollama 模型。
-        print(f"\nSelected {Fore.CYAN}Ollama{Style.RESET_ALL} model: {Fore.GREEN + Style.BRIGHT}{model_choice}{Style.RESET_ALL}\n")
-    # 如果未使用 --ollama 参数。
+        print(f"\nSelected {Fore.CYAN}Ollama{Style.RESET_ALL} model: {Fore.GREEN + Style.BRIGHT}{model_name}{Style.RESET_ALL}\n")
     else:
         # Use the standard cloud-based LLM selection
         # 修改：在云模型选择列表中添加 OpenAI 兼容选项
         # 注意：这需要 src/llm/models.py 中的 LLM_ORDER 定义允许添加自定义选项，
         # 或者我们在这里手动构建 choices 列表。为简单起见，假设 LLM_ORDER 可以接受额外选项。
         # 这里我们创建一个新的 choices 列表来演示。
-        cloud_model_choices = [questionary.Choice(display, value=value) for display, value, _ in LLM_ORDER]
+        cloud_model_choices = [questionary.Choice(display, value=(name, provider)) for display, name, provider in LLM_ORDER]
         # 添加自定义 OpenAI 兼容选项
-        cloud_model_choices.append(
-            questionary.Choice(
-                title="OpenAI Compatible (Custom Endpoint via env vars)", # 显示名称
-                value="openai_compatible_custom" # 特殊标识符
-            )
-        )
+        cloud_model_choices.append(questionary.Choice(display="OpenAI Compatible (Custom Endpoint via env vars)", value=("openai_compatible_custom", "OpenAICompatible")))  # 显示名称  # 特殊标识符
 
         # 使用 questionary 显示选择列表，让用户选择云端 LLM 模型或自定义兼容端点。
         model_choice = questionary.select(
-            "Select your LLM provider/model:",  # 更新提示信息
-            choices=cloud_model_choices, # 使用包含新选项的列表
+            "Select your LLM model:",
+            choices=cloud_model_choices,
             style=questionary.Style(
                 [
                     ("selected", "fg:green bold"),
@@ -432,36 +421,34 @@ if __name__ == "__main__":
             print("\n\nInterrupt received. Exiting...")
             # 退出程序。
             sys.exit(0)
-        # 修改：添加处理自定义 OpenAI 兼容选项的逻辑
-        elif model_choice == "openai_compatible_custom":
+
+        model_name, model_provider = model_choice
+
+        if model_choice == "openai_compatible_custom":
             # 设置特殊的模型提供商标示符
             # 注意：这需要在 src/llm/models.py 中定义对应的 ModelProvider 枚举值，例如 ModelProvider.OPENAI_COMPATIBLE
-            model_provider = "OpenAICompatible" # 假设的提供者名称
+            model_provider = "OpenAICompatible"  # 假设的提供者名称
             # 打印提示信息，告知用户需要设置环境变量
             print(f"\nSelected {Fore.CYAN}OpenAI Compatible (Custom Endpoint){Style.RESET_ALL}.")
             print(f"{Fore.YELLOW}Please ensure the following environment variables are set:")
             print(f"  - {Style.BRIGHT}OPENAI_API_BASE{Style.RESET_ALL}: The base URL of your OpenAI compatible endpoint.")
             print(f"  - {Style.BRIGHT}OPENAI_API_KEY{Style.RESET_ALL}: Your API key (if required by the endpoint).{Style.RESET_ALL}\n")
             # 使用一个通用的名称或者让用户在环境变量中指定模型
-            model_name = "custom_openai_compatible_model" # 或者从环境变量读取
-        # 如果用户选择了标准云模型。
+            model_name = "custom_openai_compatible_model"  # 或者从环境变量读取
         else:
             # Get model info using the helper function
-            # 使用 get_model_info 函数获取所选模型的详细信息（包括提供商）。
-            # 注意：get_model_info 函数需要能处理 LLM_ORDER 中定义的标准模型
-            model_info = get_model_info(model_choice)
-            # 检查是否成功获取到模型信息。
+            model_info = get_model_info(model_name, model_provider)
             if model_info:
-                # 设置模型提供商。
-                model_provider = model_info.provider.value
-                # 打印用户选择的模型及其提供商。
-                print(f"\nSelected {Fore.CYAN}{model_provider}{Style.RESET_ALL} model: {Fore.GREEN + Style.BRIGHT}{model_choice}{Style.RESET_ALL}\n")
-            # 如果未能获取模型信息。
+                if model_info.is_custom():
+                    model_name = questionary.text("Enter the custom model name:").ask()
+                    if not model_name:
+                        print("\n\nInterrupt received. Exiting...")
+                        sys.exit(0)
+
+                print(f"\nSelected {Fore.CYAN}{model_provider}{Style.RESET_ALL} model: {Fore.GREEN + Style.BRIGHT}{model_name}{Style.RESET_ALL}\n")
             else:
-                # 将模型提供商设为 "Unknown"。
                 model_provider = "Unknown"
-                # 仅打印用户选择的模型名称。
-                print(f"\nSelected model: {Fore.GREEN + Style.BRIGHT}{model_choice}{Style.RESET_ALL}\n")
+                print(f"\nSelected model: {Fore.GREEN + Style.BRIGHT}{model_name}{Style.RESET_ALL}\n")
 
     # Create the workflow with selected analysts
     # 根据用户选择的分析师创建工作流。
@@ -562,8 +549,8 @@ if __name__ == "__main__":
         portfolio=portfolio,
         show_reasoning=args.show_reasoning,
         selected_analysts=selected_analysts,
-        model_name=model_name, # 使用获取到的 model_name
-        model_provider=model_provider, # 使用获取到的 model_provider
+        model_name=model_name,
+        model_provider=model_provider,
     )
     # 调用 print_trading_output 函数打印最终的交易结果。
     print_trading_output(result)

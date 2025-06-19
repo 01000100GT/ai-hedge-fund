@@ -2,15 +2,18 @@
 对冲基金路由模块
 处理对冲基金相关的API端点，包括运行模拟和获取结果
 """
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 import asyncio
 
 from app.backend.models.schemas import ErrorResponse, HedgeFundRequest
 from app.backend.models.events import StartEvent, ProgressUpdateEvent, ErrorEvent, CompleteEvent
-from app.backend.services.graphy import create_graph, parse_hedge_fund_response, run_graph_async
+from app.backend.services.graph import create_graph, parse_hedge_fund_response, run_graph_async
 from app.backend.services.portfolio import create_portfolio
 from src.utils.progress import progress
+from src.utils.analysts import get_agents_list
+from src.llm.models import get_models_list
 
 # 创建路由器实例
 router = APIRouter(prefix="/hedge-fund")
@@ -27,13 +30,10 @@ router = APIRouter(prefix="/hedge-fund")
 async def run_hedge_fund(request: HedgeFundRequest):
     """
     运行对冲基金模拟
-    
+
     处理对冲基金模拟请求，返回SSE流式响应，包含进度更新和最终结果
     """
     try:
-        # 如果未提供则获取开始日期
-        start_date = request.get_start_date()
-
         # 创建投资组合
         portfolio = create_portfolio(request.initial_cash, request.margin_requirement, request.tickers)
 
@@ -55,8 +55,8 @@ async def run_hedge_fund(request: HedgeFundRequest):
             progress_queue = asyncio.Queue()
 
             # 简单的处理器用于将更新添加到队列
-            def progress_handler(agent_name, ticker, status):
-                event = ProgressUpdateEvent(agent=agent_name, ticker=ticker, status=status)
+            def progress_handler(agent_name, ticker, status, analysis, timestamp):
+                event = ProgressUpdateEvent(agent=agent_name, ticker=ticker, status=status, timestamp=timestamp, analysis=analysis)
                 progress_queue.put_nowait(event)
 
             # 在进度跟踪器中注册处理器
@@ -69,10 +69,11 @@ async def run_hedge_fund(request: HedgeFundRequest):
                         graph=graph,
                         portfolio=portfolio,
                         tickers=request.tickers,
-                        start_date=start_date,
+                        start_date=request.start_date,
                         end_date=request.end_date,
                         model_name=request.model_name,
                         model_provider=model_provider,
+                        request=request,  # Pass the full request for agent-specific model access
                     )
                 )
                 # 发送初始消息
@@ -117,3 +118,33 @@ async def run_hedge_fund(request: HedgeFundRequest):
         raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"处理请求时发生错误: {str(e)}")
+
+
+@router.get(
+    path="/agents",
+    responses={
+        200: {"description": "List of available agents"},
+        500: {"model": ErrorResponse, "description": "Internal server error"},
+    },
+)
+async def get_agents():
+    """Get the list of available agents."""
+    try:
+        return {"agents": get_agents_list()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve agents: {str(e)}")
+
+
+@router.get(
+    path="/language-models",
+    responses={
+        200: {"description": "List of available LLMs"},
+        500: {"model": ErrorResponse, "description": "Internal server error"},
+    },
+)
+async def get_language_models():
+    """Get the list of available models."""
+    try:
+        return {"models": get_models_list()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve models: {str(e)}")

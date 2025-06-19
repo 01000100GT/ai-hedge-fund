@@ -22,10 +22,11 @@ from src.tools.api import (
     search_line_items,
 )
 
-def valuation_agent(state: AgentState):
+
+def valuation_analyst_agent(state: AgentState):
     """
     估值分析代理主函数
-    
+
     对多个股票进行估值分析并将信号写回状态。主要职责:
     1. 获取财务数据和指标
     2. 应用多种估值方法
@@ -40,7 +41,7 @@ def valuation_agent(state: AgentState):
     valuation_analysis: dict[str, dict] = {}
 
     for ticker in tickers:
-        progress.update_status("valuation_agent", ticker, "Fetching financial data")
+        progress.update_status("valuation_analyst_agent", ticker, "Fetching financial data")
 
         # --- Historical financial metrics (pull 8 latest TTM snapshots for medians) ---
         financial_metrics = get_financial_metrics(
@@ -50,12 +51,12 @@ def valuation_agent(state: AgentState):
             limit=8,
         )
         if not financial_metrics:
-            progress.update_status("valuation_agent", ticker, "Failed: No financial metrics found")
+            progress.update_status("valuation_analyst_agent", ticker, "Failed: No financial metrics found")
             continue
         most_recent_metrics = financial_metrics[0]
 
         # --- Fine‑grained line‑items (need two periods to calc WC change) ---
-        progress.update_status("valuation_agent", ticker, "Gathering line items")
+        progress.update_status("valuation_analyst_agent", ticker, "Gathering line items")
         line_items = search_line_items(
             ticker=ticker,
             line_items=[
@@ -70,7 +71,7 @@ def valuation_agent(state: AgentState):
             limit=2,
         )
         if len(line_items) < 2:
-            progress.update_status("valuation_agent", ticker, "Failed: Insufficient financial line items")
+            progress.update_status("valuation_analyst_agent", ticker, "Failed: Insufficient financial line items")
             continue
         li_curr, li_prev = line_items[0], line_items[1]
 
@@ -113,7 +114,7 @@ def valuation_agent(state: AgentState):
         # ------------------------------------------------------------------
         market_cap = get_market_cap(ticker, end_date)
         if not market_cap:
-            progress.update_status("valuation_agent", ticker, "Failed: Market cap unavailable")
+            progress.update_status("valuation_analyst_agent", ticker, "Failed: Market cap unavailable")
             continue
 
         method_values = {
@@ -125,31 +126,24 @@ def valuation_agent(state: AgentState):
 
         total_weight = sum(v["weight"] for v in method_values.values() if v["value"] > 0)
         if total_weight == 0:
-            progress.update_status("valuation_agent", ticker, "Failed: All valuation methods zero")
+            progress.update_status("valuation_analyst_agent", ticker, "Failed: All valuation methods zero")
             continue
 
         for v in method_values.values():
             v["gap"] = (v["value"] - market_cap) / market_cap if v["value"] > 0 else None
 
-        weighted_gap = sum(
-            v["weight"] * v["gap"] for v in method_values.values() if v["gap"] is not None
-        ) / total_weight
+        weighted_gap = sum(v["weight"] * v["gap"] for v in method_values.values() if v["gap"] is not None) / total_weight
 
         signal = "bullish" if weighted_gap > 0.15 else "bearish" if weighted_gap < -0.15 else "neutral"
         confidence = round(min(abs(weighted_gap) / 0.30 * 100, 100))
 
         reasoning = {
             f"{m}_analysis": {
-                "signal": (
-                    "bullish" if vals["gap"] and vals["gap"] > 0.15 else
-                    "bearish" if vals["gap"] and vals["gap"] < -0.15 else "neutral"
-                ),
-                "details": (
-                    f"Value: ${vals['value']:,.2f}, Market Cap: ${market_cap:,.2f}, "
-                    f"Gap: {vals['gap']:.1%}, Weight: {vals['weight']*100:.0f}%"
-                ),
+                "signal": ("bullish" if vals["gap"] and vals["gap"] > 0.15 else "bearish" if vals["gap"] and vals["gap"] < -0.15 else "neutral"),
+                "details": (f"Value: ${vals['value']:,.2f}, Market Cap: ${market_cap:,.2f}, " f"Gap: {vals['gap']:.1%}, Weight: {vals['weight']*100:.0f}%"),
             }
-            for m, vals in method_values.items() if vals["value"] > 0
+            for m, vals in method_values.items()
+            if vals["value"] > 0
         }
 
         valuation_analysis[ticker] = {
@@ -157,18 +151,25 @@ def valuation_agent(state: AgentState):
             "confidence": confidence,
             "reasoning": reasoning,
         }
-        progress.update_status("valuation_agent", ticker, "Done")
+        progress.update_status("valuation_analyst_agent", ticker, "Done", analysis=json.dumps(reasoning, indent=4))
 
     # ---- Emit message (for LLM tool chain) ----
-    msg = HumanMessage(content=json.dumps(valuation_analysis), name="valuation_agent")
+    msg = HumanMessage(content=json.dumps(valuation_analysis), name="valuation_analyst_agent")
     if state["metadata"].get("show_reasoning"):
         show_agent_reasoning(valuation_analysis, "Valuation Analysis Agent")
-    state["data"]["analyst_signals"]["valuation_agent"] = valuation_analysis
+
+    # Add the signal to the analyst_signals list
+    state["data"]["analyst_signals"]["valuation_analyst_agent"] = valuation_analysis
+
+    progress.update_status("valuation_analyst_agent", None, "Done")
+
     return {"messages": [msg], "data": data}
+
 
 #############################
 # Helper Valuation Functions
 #############################
+
 
 def calculate_owner_earnings_value(
     net_income: float | None,
@@ -182,7 +183,7 @@ def calculate_owner_earnings_value(
 ) -> float:
     """
     巴菲特所有者收益估值法,包含安全边际
-    
+
     所有者收益 = 净利润 + 折旧 - 维护性资本支出
     """
     if not all(isinstance(x, (int, float)) for x in [net_income, depreciation, capex, working_capital_change]):
@@ -198,9 +199,7 @@ def calculate_owner_earnings_value(
         pv += future / (1 + required_return) ** yr
 
     terminal_growth = min(growth_rate, 0.03)
-    term_val = (owner_earnings * (1 + growth_rate) ** num_years * (1 + terminal_growth)) / (
-        required_return - terminal_growth
-    )
+    term_val = (owner_earnings * (1 + growth_rate) ** num_years * (1 + terminal_growth)) / (required_return - terminal_growth)
     pv_term = term_val / (1 + required_return) ** num_years
 
     intrinsic = pv + pv_term
@@ -225,9 +224,7 @@ def calculate_intrinsic_value(
         fcft = free_cash_flow * (1 + growth_rate) ** yr
         pv += fcft / (1 + discount_rate) ** yr
 
-    term_val = (
-        free_cash_flow * (1 + growth_rate) ** num_years * (1 + terminal_growth_rate)
-    ) / (discount_rate - terminal_growth_rate)
+    term_val = (free_cash_flow * (1 + growth_rate) ** num_years * (1 + terminal_growth_rate)) / (discount_rate - terminal_growth_rate)
     pv_term = term_val / (1 + discount_rate) ** num_years
 
     return pv + pv_term
@@ -246,9 +243,7 @@ def calculate_ev_ebitda_value(financial_metrics: list):
         return 0
 
     ebitda_now = m0.enterprise_value / m0.enterprise_value_to_ebitda_ratio
-    med_mult = median([
-        m.enterprise_value_to_ebitda_ratio for m in financial_metrics if m.enterprise_value_to_ebitda_ratio
-    ])
+    med_mult = median([m.enterprise_value_to_ebitda_ratio for m in financial_metrics if m.enterprise_value_to_ebitda_ratio])
     ev_implied = med_mult * ebitda_now
     net_debt = (m0.enterprise_value or 0) - (m0.market_cap or 0)
     return max(ev_implied - net_debt, 0)
@@ -265,7 +260,7 @@ def calculate_residual_income_value(
 ):
     """
     剩余收益模型(Edwards-Bell-Ohlson)
-    
+
     基于账面价值和超额收益的现值计算公司价值
     """
     if not (market_cap and net_income and price_to_book_ratio and price_to_book_ratio > 0):
@@ -281,9 +276,7 @@ def calculate_residual_income_value(
         ri_t = ri0 * (1 + book_value_growth) ** yr
         pv_ri += ri_t / (1 + cost_of_equity) ** yr
 
-    term_ri = ri0 * (1 + book_value_growth) ** (num_years + 1) / (
-        cost_of_equity - terminal_growth_rate
-    )
+    term_ri = ri0 * (1 + book_value_growth) ** (num_years + 1) / (cost_of_equity - terminal_growth_rate)
     pv_term = term_ri / (1 + cost_of_equity) ** num_years
 
     intrinsic = book_val + pv_ri + pv_term

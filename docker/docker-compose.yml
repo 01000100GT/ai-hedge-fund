@@ -16,73 +16,88 @@ services:
 
   # 对冲基金主服务
   hedge-fund:
-    build: .                      # 使用当前目录的Dockerfile构建
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
     image: ai-hedge-fund
     depends_on:
       - ollama                    # 依赖ollama服务
     volumes:
-      - ./.env:/app/.env         # 环境变量文件挂载
-    command: python src/main.py --ticker AAPL,MSFT,NVDA  # 运行命令
+      - ../.env:/app/.env
+    command: python src/main.py --ticker AAPL,MSFT,NVDA
     environment:
       - PYTHONUNBUFFERED=1
       - OLLAMA_BASE_URL=http://ollama:11434
+      - PYTHONPATH=/app
     tty: true
     stdin_open: true
 
   # 对冲基金推理服务（显示推理过程）
   hedge-fund-reasoning:
-    build: .
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
     image: ai-hedge-fund
     depends_on:
       - ollama
     volumes:
-      - ./.env:/app/.env
+      - ../.env:/app/.env
     command: python src/main.py --ticker AAPL,MSFT,NVDA --show-reasoning
     environment:
       - PYTHONUNBUFFERED=1
       - OLLAMA_BASE_URL=http://ollama:11434
+      - PYTHONPATH=/app
     tty: true
     stdin_open: true
 
   hedge-fund-ollama:
-    build: .
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
     image: ai-hedge-fund
     depends_on:
       - ollama
     volumes:
-      - ./.env:/app/.env
+      - ../.env:/app/.env
     command: python src/main.py --ticker AAPL,MSFT,NVDA --ollama
     environment:
       - PYTHONUNBUFFERED=1
       - OLLAMA_BASE_URL=http://ollama:11434
+      - PYTHONPATH=/app
     tty: true
     stdin_open: true
 
   backtester:
-    build: .
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
     image: ai-hedge-fund
     depends_on:
       - ollama
     volumes:
-      - ./.env:/app/.env
+      - ../.env:/app/.env
     command: python src/backtester.py --ticker AAPL,MSFT,NVDA
     environment:
       - PYTHONUNBUFFERED=1
       - OLLAMA_BASE_URL=http://ollama:11434
+      - PYTHONPATH=/app
     tty: true
     stdin_open: true
 
   backtester-ollama:
-    build: .
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
     image: ai-hedge-fund
     depends_on:
       - ollama
     volumes:
-      - ./.env:/app/.env
+      - ../.env:/app/.env
     command: python src/backtester.py --ticker AAPL,MSFT,NVDA --ollama
     environment:
       - PYTHONUNBUFFERED=1
       - OLLAMA_BASE_URL=http://ollama:11434
+      - PYTHONPATH=/app
     tty: true
     stdin_open: true
 

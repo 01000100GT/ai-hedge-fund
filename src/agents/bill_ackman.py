@@ -118,8 +118,7 @@ def bill_ackman_agent(state: AgentState):
         ackman_output = generate_ackman_output(
             ticker=ticker, 
             analysis_data=analysis_data,
-            model_name=state["metadata"]["model_name"],
-            model_provider=state["metadata"]["model_provider"],
+            state=state,
         )
         
         ackman_analysis[ticker] = {
@@ -128,7 +127,7 @@ def bill_ackman_agent(state: AgentState):
             "reasoning": ackman_output.reasoning
         }
         
-        progress.update_status("bill_ackman_agent", ticker, "Done")
+        progress.update_status("bill_ackman_agent", ticker, "Done", analysis=ackman_output.reasoning)
     
     # Wrap results in a single message for the chain
     message = HumanMessage(
@@ -142,6 +141,8 @@ def bill_ackman_agent(state: AgentState):
     
     # Add signals to the overall state
     state["data"]["analyst_signals"]["bill_ackman_agent"] = ackman_analysis
+
+    progress.update_status("bill_ackman_agent", None, "Done")
 
     return {
         "messages": [message],
@@ -414,8 +415,7 @@ def analyze_valuation(financial_line_items: list, market_cap: float) -> dict:
 def generate_ackman_output(
     ticker: str,
     analysis_data: dict[str, any],
-    model_name: str,
-    model_provider: str,
+    state: AgentState,
 ) -> BillAckmanSignal:
     """
     以比尔·阿克曼的风格生成投资决策。
@@ -476,9 +476,8 @@ def generate_ackman_output(
 
     return call_llm(
         prompt=prompt, 
-        model_name=model_name, 
-        model_provider=model_provider, 
         pydantic_model=BillAckmanSignal, 
         agent_name="bill_ackman_agent", 
+        state=state,
         default_factory=create_default_bill_ackman_signal,
     )

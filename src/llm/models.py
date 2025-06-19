@@ -5,6 +5,7 @@ LLM模型相关的类和函数定义文件
 """
 
 import os
+import json
 from langchain_anthropic import ChatAnthropic
 from langchain_deepseek import ChatDeepSeek
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -16,6 +17,7 @@ from pydantic import BaseModel
 from typing import Tuple, Optional, List
 from dataclasses import dataclass
 from colorama import Fore, Style
+from pathlib import Path
 
 
 class ModelProvider(str, Enum):
@@ -48,6 +50,10 @@ class LLMModel:
         """将模型信息转换为questionary选项所需的格式"""
         return (self.display_name, self.model_name, self.provider.value)
 
+    def is_custom(self) -> bool:
+        """Check if the model is a Gemini model"""
+        return self.model_name == "-"
+
     def has_json_mode(self) -> bool:
         """检查模型是否支持JSON模式输出"""
         if self.is_deepseek() or self.is_gemini():
@@ -70,34 +76,30 @@ class LLMModel:
         return self.provider == ModelProvider.OLLAMA
 
 
-# Define available models
-AVAILABLE_MODELS = [
-    LLMModel(display_name="[anthropic] claude-3.5-haiku", model_name="claude-3-5-haiku-latest", provider=ModelProvider.ANTHROPIC),
-    LLMModel(display_name="[anthropic] claude-3.5-sonnet", model_name="claude-3-5-sonnet-latest", provider=ModelProvider.ANTHROPIC),
-    LLMModel(display_name="[anthropic] claude-3.7-sonnet", model_name="claude-3-7-sonnet-latest", provider=ModelProvider.ANTHROPIC),
-    LLMModel(display_name="[deepseek] deepseek-r1", model_name="deepseek-reasoner", provider=ModelProvider.DEEPSEEK),
-    LLMModel(display_name="[deepseek] deepseek-v3", model_name="deepseek-chat", provider=ModelProvider.DEEPSEEK),
-    LLMModel(display_name="[gemini] gemini-2.0-flash", model_name="gemini-2.0-flash", provider=ModelProvider.GEMINI),
-    LLMModel(display_name="[gemini] gemini-2.5-pro", model_name="gemini-2.5-pro-exp-03-25", provider=ModelProvider.GEMINI),
-    LLMModel(display_name="[groq] llama-4-scout-17b", model_name="meta-llama/llama-4-scout-17b-16e-instruct", provider=ModelProvider.GROQ),
-    LLMModel(display_name="[groq] llama-4-maverick-17b", model_name="meta-llama/llama-4-maverick-17b-128e-instruct", provider=ModelProvider.GROQ),
-    LLMModel(display_name="[openai] gpt-4.5", model_name="gpt-4.5-preview", provider=ModelProvider.OPENAI),
-    LLMModel(display_name="[openai] gpt-4o", model_name="gpt-4o", provider=ModelProvider.OPENAI),
-    LLMModel(display_name="[openai] o3", model_name="o3", provider=ModelProvider.OPENAI),
-    LLMModel(display_name="[openai] o4-mini", model_name="o4-mini", provider=ModelProvider.OPENAI),
-]
+# Load models from JSON file
+def load_models_from_json(json_path: str) -> List[LLMModel]:
+    """Load models from a JSON file"""
+    with open(json_path, "r") as f:
+        models_data = json.load(f)
 
-# Define Ollama models separately
-OLLAMA_MODELS = [
-    LLMModel(display_name="[google] gemma3 (4B)", model_name="gemma3:4b", provider=ModelProvider.OLLAMA),
-    LLMModel(display_name="[alibaba] qwen3 (4B)", model_name="qwen3:4b", provider=ModelProvider.OLLAMA),
-    LLMModel(display_name="[meta] llama3.1 (8B)", model_name="llama3.1:latest", provider=ModelProvider.OLLAMA),
-    LLMModel(display_name="[google] gemma3 (12B)", model_name="gemma3:12b", provider=ModelProvider.OLLAMA),
-    LLMModel(display_name="[mistral] mistral-small3.1 (24B)", model_name="mistral-small3.1", provider=ModelProvider.OLLAMA),
-    LLMModel(display_name="[google] gemma3 (27B)", model_name="gemma3:27b", provider=ModelProvider.OLLAMA),
-    LLMModel(display_name="[alibaba] qwen3 (30B-a3B)", model_name="qwen3:30b-a3b", provider=ModelProvider.OLLAMA),
-    LLMModel(display_name="[meta] llama-3.3 (70B)", model_name="llama3.3:70b-instruct-q4_0", provider=ModelProvider.OLLAMA),
-]
+    models = []
+    for model_data in models_data:
+        # Convert string provider to ModelProvider enum
+        provider_enum = ModelProvider(model_data["provider"])
+        models.append(LLMModel(display_name=model_data["display_name"], model_name=model_data["model_name"], provider=provider_enum))
+    return models
+
+
+# Get the path to the JSON files
+current_dir = Path(__file__).parent
+models_json_path = current_dir / "api_models.json"
+ollama_models_json_path = current_dir / "ollama_models.json"
+
+# Load available models from JSON
+AVAILABLE_MODELS = load_models_from_json(str(models_json_path))
+
+# Load Ollama models from JSON
+OLLAMA_MODELS = load_models_from_json(str(ollama_models_json_path))
 
 # Create LLM_ORDER in the format expected by the UI
 LLM_ORDER = [model.to_choice_tuple() for model in AVAILABLE_MODELS]
@@ -106,30 +108,17 @@ LLM_ORDER = [model.to_choice_tuple() for model in AVAILABLE_MODELS]
 OLLAMA_LLM_ORDER = [model.to_choice_tuple() for model in OLLAMA_MODELS]
 
 
-def get_model_info(model_name: str) -> LLMModel | None:
-    """
-    根据模型名称获取模型信息
-    Args:
-        model_name: 模型名称
-    Returns:
-        返回对应的LLMModel实例，如果未找到则返回None
-    """
+def get_model_info(model_name: str, model_provider: str) -> LLMModel | None:
+    """Get model information by model_name"""
     if model_name == "openai_compatible_custom":
-        return LLMModel(
-            display_name="OpenAI Compatible (Custom Endpoint via env vars)",
-            model_name="custom_openai_compatible_model",
-            provider=ModelProvider.OPENAI_COMPATIBLE
-        )
+        return LLMModel(display_name="OpenAI Compatible (Custom Endpoint via env vars)", model_name="custom_openai_compatible_model", provider=ModelProvider.OPENAI_COMPATIBLE)
+    all_models = AVAILABLE_MODELS + OLLAMA_MODELS
+    return next((model for model in all_models if model.model_name == model_name and model.provider == model_provider), None)
 
-    for model in AVAILABLE_MODELS:
-        if model.model_name == model_name:
-            return model
 
-    for _, ollama_model_name, _ in OLLAMA_LLM_ORDER:
-        if ollama_model_name == model_name:
-            return LLMModel(display_name=f"[ollama] {model_name}", model_name=model_name, provider=ModelProvider.OLLAMA)
-
-    return None
+def get_models_list():
+    """Get the list of models for API responses."""
+    return [{"display_name": model.display_name, "model_name": model.model_name, "provider": model.provider.value} for model in AVAILABLE_MODELS]
 
 
 def get_model(model_name: str, model_provider: ModelProvider) -> ChatOpenAI | ChatGroq | ChatOllama | None:
@@ -151,11 +140,12 @@ def get_model(model_name: str, model_provider: ModelProvider) -> ChatOpenAI | Ch
     elif model_provider == ModelProvider.OPENAI:
         # Get and validate API key
         api_key = os.getenv("OPENAI_API_KEY")
+        base_url = os.getenv("OPENAI_API_BASE")
         if not api_key:
             # Print error to console
             print(f"API Key Error: Please make sure OPENAI_API_KEY is set in your .env file.")
             raise ValueError("OpenAI API key not found.  Please make sure OPENAI_API_KEY is set in your .env file.")
-        return ChatOpenAI(model=model_name, api_key=api_key)
+        return ChatOpenAI(model=model_name, api_key=api_key, base_url=base_url)
     elif model_provider == ModelProvider.ANTHROPIC:
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
@@ -194,12 +184,12 @@ def get_model(model_name: str, model_provider: ModelProvider) -> ChatOpenAI | Ch
 
         # 从环境变量获取 API Key (可选, 取决于端点是否需要认证)
         # 为方便起见，可以复用 OPENAI_API_KEY，或者定义一个特定的变量如 OPENAI_COMPATIBLE_API_KEY
-        api_key = os.getenv("OPENAI_API_KEY") 
+        api_key = os.getenv("OPENAI_API_KEY")
 
         # 从环境变量获取实际的模型名称 (可选但推荐)
         # 如果未设置 OPENAI_COMPATIBLE_MODEL_NAME，则使用传入的 model_name (即占位符 "custom_openai_compatible_model")
-        actual_model_name = os.getenv("OPENAI_COMPATIBLE_MODEL_NAME", model_name) 
-        
+        actual_model_name = os.getenv("OPENAI_COMPATIBLE_MODEL_NAME", model_name)
+
         # 打印使用的配置信息
         print(f"{Fore.YELLOW}Using OpenAI Compatible Endpoint:")
         print(f"  Base URL: {api_base}")
@@ -217,7 +207,7 @@ def get_model(model_name: str, model_provider: ModelProvider) -> ChatOpenAI | Ch
             # 如果 API Key 存在，则添加到参数中
             if api_key:
                 llm_params["api_key"] = api_key
-                
+
             # 创建 ChatOpenAI 实例
             return ChatOpenAI(**llm_params)
         except Exception as e:

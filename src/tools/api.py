@@ -41,17 +41,14 @@ _session = requests.Session()
 # backoff_factor=1: 等待时间因子 (1s, 2s, 4s, 8s, 16s)
 # status_forcelist=[429, 500, 502, 503, 504]: 在这些状态码上触发重试
 # allowed_methods=False: 对所有请求方法都应用重试（或指定 frozenset(['GET', 'POST'])）
-retries = Retry(total=5, 
-                backoff_factor=1, 
-                status_forcelist=[429, 500, 502, 503, 504],
-                allowed_methods=False) # 或者使用 method_whitelist=frozenset(['GET', 'POST'])
+retries = Retry(total=5, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504], allowed_methods=False)  # 或者使用 method_whitelist=frozenset(['GET', 'POST'])
 
 # 创建一个 HTTPAdapter 并挂载重试策略
 adapter = HTTPAdapter(max_retries=retries)
 
 # 将适配器挂载到 http:// 和 https://
-_session.mount('http://', adapter)
-_session.mount('https://', adapter)
+_session.mount("http://", adapter)
+_session.mount("https://", adapter)
 
 # 全局设置 API Key (如果存在)，Session 会在所有请求中自动使用它
 if api_key := os.environ.get("FINANCIAL_DATASETS_API_KEY"):
@@ -59,11 +56,46 @@ if api_key := os.environ.get("FINANCIAL_DATASETS_API_KEY"):
 
 # --- Financial Data API Functions (使用 Session) ---
 
+
+def _make_api_request(url: str, headers: dict, method: str = "GET", json_data: dict = None, max_retries: int = 3) -> requests.Response:
+    """
+    Make an API request with rate limiting handling and moderate backoff.
+
+    Args:
+        url: The URL to request
+        headers: Headers to include in the request
+        method: HTTP method (GET or POST)
+        json_data: JSON data for POST requests
+        max_retries: Maximum number of retries (default: 3)
+
+    Returns:
+        requests.Response: The response object
+
+    Raises:
+        Exception: If the request fails with a non-429 error
+    """
+    for attempt in range(max_retries + 1):  # +1 for initial attempt
+        if method.upper() == "POST":
+            response = requests.post(url, headers=headers, json=json_data)
+        else:
+            response = requests.get(url, headers=headers)
+
+        if response.status_code == 429 and attempt < max_retries:
+            # Linear backoff: 60s, 90s, 120s, 150s...
+            delay = 60 + (30 * attempt)
+            print(f"Rate limited (429). Attempt {attempt + 1}/{max_retries + 1}. Waiting {delay}s before retrying...")
+            time.sleep(delay)
+            continue
+
+        # Return the response (whether success, other errors, or final 429)
+        return response
+
+
 def get_prices(ticker: str, start_date: str, end_date: str) -> list[Price]:
     """
     获取股票价格数据
     从缓存或API获取指定时间范围内的价格数据
-    
+
     Args:
         ticker: 股票代码
         start_date: 开始日期
@@ -83,8 +115,8 @@ def get_prices(ticker: str, start_date: str, end_date: str) -> list[Price]:
     url = f"https://api.financialdatasets.ai/prices/?ticker={ticker}&interval=day&interval_multiplier=1&start_date={start_date}&end_date={end_date}"
     try:
         # 修改: 使用 _session.get 替代 requests.get
-        response = _session.get(url, timeout=30) # 添加 timeout
-        response.raise_for_status() # 检查 HTTP 错误状态码 (4xx, 5xx)
+        response = _session.get(url, timeout=30)  # 添加 timeout
+        response.raise_for_status()  # 检查 HTTP 错误状态码 (4xx, 5xx)
     except requests.exceptions.RequestException as e:
         # 处理 requests 相关的异常 (包括重试失败后的最终错误)
         print(f"Error fetching price data for {ticker} after retries: {e}")
@@ -97,8 +129,8 @@ def get_prices(ticker: str, start_date: str, end_date: str) -> list[Price]:
     if not prices:
         return []
 
-    # Cache the results as dicts
-    _cache.set_prices(ticker, [p.model_dump() for p in prices])
+    # Cache the results using the comprehensive cache key
+    _cache.set_prices(cache_key, [p.model_dump() for p in prices])
     return prices
 
 
@@ -111,7 +143,7 @@ def get_financial_metrics(
     """
     获取财务指标数据
     从缓存或API获取指定公司的财务指标数据
-    
+
     Args:
         ticker: 股票代码
         end_date: 结束日期
@@ -132,22 +164,21 @@ def get_financial_metrics(
     url = f"https://api.financialdatasets.ai/financial-metrics/?ticker={ticker}&report_period_lte={end_date}&limit={limit}&period={period}"
     try:
         # 修改: 使用 _session.get 替代 requests.get
-        response = _session.get(url, timeout=30) # 添加 timeout
+        response = _session.get(url, timeout=30)  # 添加 timeout
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
         print(f"Error fetching financial metrics for {ticker} after retries: {e}")
         raise Exception(f"Error fetching data: {ticker} - {e}") from e
-        
+
     # Parse response with Pydantic model
     metrics_response = FinancialMetricsResponse(**response.json())
-    # Return the FinancialMetrics objects directly instead of converting to dict
     financial_metrics = metrics_response.financial_metrics
 
     if not financial_metrics:
         return []
 
-    # Cache the results as dicts
-    _cache.set_financial_metrics(ticker, [m.model_dump() for m in financial_metrics])
+    # Cache the results as dicts using the comprehensive cache key
+    _cache.set_financial_metrics(cache_key, [m.model_dump() for m in financial_metrics])
     return financial_metrics
 
 
@@ -161,7 +192,7 @@ def search_line_items(
     """
     搜索财务报表行项目
     从API获取指定公司的财务报表行项目数据
-    
+
     Args:
         ticker: 股票代码
         line_items: 需要搜索的行项目列表
@@ -181,12 +212,12 @@ def search_line_items(
     }
     try:
         # 修改: 使用 _session.post 替代 requests.post
-        response = _session.post(url, json=body, timeout=30) # 添加 timeout
+        response = _session.post(url, json=body, timeout=30)  # 添加 timeout
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
         print(f"Error searching line items for {ticker} after retries: {e}")
         raise Exception(f"Error fetching data: {ticker} - {e}") from e
-        
+
     data = response.json()
     response_model = LineItemResponse(**data)
     search_results = response_model.search_results
@@ -206,7 +237,7 @@ def get_insider_trades(
     """
     获取内部交易数据
     从缓存或API获取指定公司的内部交易数据
-    
+
     Args:
         ticker: 股票代码
         end_date: 结束日期
@@ -234,7 +265,7 @@ def get_insider_trades(
         url += f"&limit={limit}"
         try:
             # 修改: 使用 _session.get 替代 requests.get
-            response = _session.get(url, timeout=30) # 添加 timeout
+            response = _session.get(url, timeout=30)  # 添加 timeout
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
             print(f"Error fetching insider trades for {ticker} (page ending {current_end_date}) after retries: {e}")
@@ -265,8 +296,8 @@ def get_insider_trades(
     if not all_trades:
         return []
 
-    # Cache the results
-    _cache.set_insider_trades(ticker, [trade.model_dump() for trade in all_trades])
+    # Cache the results using the comprehensive cache key
+    _cache.set_insider_trades(cache_key, [trade.model_dump() for trade in all_trades])
     return all_trades
 
 
@@ -279,7 +310,7 @@ def get_company_news(
     """
     获取公司新闻数据
     从缓存或API获取指定公司的新闻数据
-    
+
     Args:
         ticker: 股票代码
         end_date: 结束日期
@@ -311,13 +342,13 @@ def get_company_news(
         url += f"&limit={limit}"
         try:
             # 修改: 使用 _session.get 替代 requests.get
-            response = _session.get(url, timeout=30) # 添加 timeout
+            response = _session.get(url, timeout=30)  # 添加 timeout
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
             print(f"Error fetching company news for {ticker} (page ending {current_end_date}) after retries: {e}")
             # 决定是抛出异常还是返回已获取的部分数据
             raise Exception(f"Error fetching data: {ticker} - {e}") from e
-            
+
         data = response.json()
         response_model = CompanyNewsResponse(**data)
         company_news = response_model.news
@@ -341,8 +372,8 @@ def get_company_news(
     if not all_news:
         return []
 
-    # Cache the results
-    _cache.set_company_news(ticker, [news.model_dump() for news in all_news])
+    # Cache the results using the comprehensive cache key
+    _cache.set_company_news(cache_key, [news.model_dump() for news in all_news])
     return all_news
 
 
@@ -353,7 +384,7 @@ def get_market_cap(
     """
     获取市值数据
     从API获取指定公司的市值数据
-    
+
     Args:
         ticker: 股票代码
         end_date: 结束日期
@@ -365,7 +396,7 @@ def get_market_cap(
         url = f"https://api.financialdatasets.ai/company/facts/?ticker={ticker}"
         try:
             # 修改: 使用 _session.get 替代 requests.get
-            response = _session.get(url, timeout=30) # 添加 timeout
+            response = _session.get(url, timeout=30)  # 添加 timeout
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
             print(f"Error fetching company facts for {ticker} after retries: {e}")
@@ -391,7 +422,7 @@ def get_market_cap(
 def prices_to_df(prices: list[Price]) -> pd.DataFrame:
     """
     将价格数据转换为DataFrame格式
-    
+
     Args:
         prices: 价格数据列表
     Returns:
@@ -411,7 +442,7 @@ def prices_to_df(prices: list[Price]) -> pd.DataFrame:
 def get_price_data(ticker: str, start_date: str, end_date: str) -> pd.DataFrame:
     """
     获取价格数据并转换为DataFrame格式
-    
+
     Args:
         ticker: 股票代码
         start_date: 开始日期

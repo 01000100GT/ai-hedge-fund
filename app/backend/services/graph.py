@@ -2,6 +2,7 @@
 图形工作流服务模块
 管理AI对冲基金中各个代理之间的工作流程和通信
 """
+
 import asyncio
 import json
 from langchain_core.messages import HumanMessage
@@ -17,7 +18,7 @@ from src.graph.state import AgentState
 def create_graph(selected_agents: list[str]) -> StateGraph:
     """
     创建包含选定代理的工作流图
-    
+
     参数:
         selected_agents: 选定的分析师代理列表
     返回:
@@ -26,7 +27,10 @@ def create_graph(selected_agents: list[str]) -> StateGraph:
     graph = StateGraph(AgentState)
     graph.add_node("start_node", start)
 
-    # 从配置中获取分析师节点
+    # Filter out any agents that are not in analyst.py
+    selected_agents = [agent for agent in selected_agents if agent in ANALYST_CONFIG]
+
+    # Get analyst nodes from the configuration
     analyst_nodes = {key: (f"{key}_agent", config["agent_func"]) for key, config in ANALYST_CONFIG.items()}
 
     # 添加选定的分析师节点
@@ -37,7 +41,7 @@ def create_graph(selected_agents: list[str]) -> StateGraph:
 
     # 始终添加风险和投资组合管理节点
     graph.add_node("risk_management_agent", risk_management_agent)
-    graph.add_node("portfolio_management_agent", portfolio_management_agent)
+    graph.add_node("portfolio_manager", portfolio_management_agent)
 
     # 将选定的代理连接到风险管理
     for agent_name in selected_agents:
@@ -45,24 +49,22 @@ def create_graph(selected_agents: list[str]) -> StateGraph:
         graph.add_edge(node_name, "risk_management_agent")
 
     # 将风险管理代理连接到投资组合管理代理
-    graph.add_edge("risk_management_agent", "portfolio_management_agent")
+    graph.add_edge("risk_management_agent", "portfolio_manager")
 
     # 将投资组合管理代理连接到结束节点
-    graph.add_edge("portfolio_management_agent", END)
+    graph.add_edge("portfolio_manager", END)
 
     # 设置入口点为开始节点
     graph.set_entry_point("start_node")
     return graph
 
 
-async def run_graph_async(graph, portfolio, tickers, start_date, end_date, model_name, model_provider):
-    """
-    异步运行图形工作流的包装器
-    
-    使用asyncio在单独的线程中运行同步函数，以避免阻塞事件循环
-    """
+async def run_graph_async(graph, portfolio, tickers, start_date, end_date, model_name, model_provider, request=None):
+    """Async wrapper for run_graph to work with asyncio."""
+    # Use run_in_executor to run the synchronous function in a separate thread
+    # so it doesn't block the event loop
     loop = asyncio.get_running_loop()
-    result = await loop.run_in_executor(None, lambda: run_graph(graph, portfolio, tickers, start_date, end_date, model_name, model_provider))
+    result = await loop.run_in_executor(None, lambda: run_graph(graph, portfolio, tickers, start_date, end_date, model_name, model_provider, request))  # Use default executor
     return result
 
 
@@ -74,10 +76,11 @@ def run_graph(
     end_date: str,
     model_name: str,
     model_provider: str,
+    request=None,
 ) -> dict:
     """
     运行工作流图并生成交易决策
-    
+
     参数:
         graph: 配置好的工作流图
         portfolio: 投资组合信息
@@ -86,7 +89,7 @@ def run_graph(
         end_date: 结束日期
         model_name: 使用的模型名称
         model_provider: 模型提供者
-    
+
     返回:
         包含交易决策的字典
     """
@@ -108,6 +111,7 @@ def run_graph(
                 "show_reasoning": False,
                 "model_name": model_name,
                 "model_provider": model_provider,
+                "request": request,  # Pass the request for agent-specific model access
             },
         },
     )
@@ -116,7 +120,7 @@ def run_graph(
 def parse_hedge_fund_response(response):
     """
     解析对冲基金响应的JSON字符串
-    
+
     参数:
         response: JSON格式的响应字符串
     返回:
