@@ -54,7 +54,7 @@
         },
 
         {
-            "name": "DeerFlow Frontend",
+            "name": "Frontend",
             "type": "node-terminal",
             "request": "launch",
             "cwd": "${workspaceFolder}/app/frontend",
@@ -66,7 +66,7 @@
             }
         },
         {
-            "name": "DeerFlow Frontend Win",
+            "name": "Frontend Win",
             "type": "node-terminal",
             "request": "launch",
             "cwd": "${workspaceFolder}/app/frontend",
