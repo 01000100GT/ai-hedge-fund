@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "src/main.py (直接运行)",
+            "name": "src/main.py (后端测试用例，使用默认ticker)",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/src/main.py",
@@ -52,8 +52,33 @@
                 "PYTHONPATH": "${workspaceFolder}"
             }
         },
+
         {
-            "name": "app/backend (修复路径)",
+            "name": "DeerFlow Frontend",
+            "type": "node-terminal",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/app/frontend",
+            "command": "/Users/sss/.nvm/versions/node/v22.14.0/bin/pnpm dev",
+            "serverReadyAction": {
+                "pattern": "- Local:.*(https?://localhost:3000)",
+                "uriFormat": "%s",
+                "action": "debugWithChrome"
+            }
+        },
+        {
+            "name": "DeerFlow Frontend Win",
+            "type": "node-terminal",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/app/frontend",
+            "command": "pnpm dev",
+            "serverReadyAction": {
+                "pattern": "- Local:.*(https?://localhost:3000)",
+                "uriFormat": "%s",
+                "action": "debugWithEdge"
+            }
+        },
+        {
+            "name": "app/backend（后台服务）",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/app/backend/main.py",
