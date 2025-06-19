@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "scr/main",
+            "name": "src/main.py (直接运行)",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/src/main.py",
@@ -13,12 +13,60 @@
             "justMyCode": false
         },
         {
-            "name": "app/backend",
+            "name": "src/main.py (uv run - AAPL,MSFT,NVDA)",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/backend/main.py",
+            "module": "uv",
+            "args": [
+                "run",
+                "python",
+                "src/main.py",
+                "--ticker",
+                "AAPL,MSFT,NVDA",
+                "--show-reasoning"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        },
+        {
+            "name": "src/main.py (uv run - 自定义参数)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uv",
+            "args": [
+                "run",
+                "python",
+                "src/main.py",
+                "--ticker",
+                "${input:tickers}",
+                "--show-reasoning"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        },
+        {
+            "name": "app/backend (修复路径)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app/backend/main.py",
             "console": "integratedTerminal",
             "justMyCode": false
-        },
+        }
+    ],
+    "inputs": [
+        {
+            "id": "tickers",
+            "description": "输入股票代码（逗号分隔）",
+            "default": "AAPL,MSFT,NVDA",
+            "type": "promptString"
+        }
     ]
 }
