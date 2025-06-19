@@ -30,7 +30,6 @@ ENV/
 
 # IDE
 .idea/
-.vscode/
 *.swp
 *.swo
 .cursorrules
@@ -54,3 +53,4 @@ Thumbs.db
 node_modules
 
 .cursor
+.venv

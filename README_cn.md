@@ -41,7 +41,7 @@
 
 ## 目录
 - [设置](#设置)
-  - [使用Poetry](#使用poetry)
+  - [使用uv](#使用uv)
   - [使用Docker](#使用docker)
 - [使用方法](#使用方法)
   - [运行对冲基金](#运行对冲基金)
@@ -53,7 +53,7 @@
 
 ## 设置
 
-### 使用Poetry
+### 使用uv
 
 克隆仓库：
 ```bash
@@ -61,14 +61,18 @@ git clone https://github.com/virattt/ai-hedge-fund.git
 cd ai-hedge-fund
 ```
 
-1. 安装Poetry（如果尚未安装）：
+1. 安装uv（如果尚未安装）：
 ```bash
-curl -sSL https://install.python-poetry.org | python3 -
+# 在macOS和Linux上：
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 在Windows上：
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
 2. 安装依赖：
 ```bash
-poetry install
+uv sync
 ```
 
 3. 设置环境变量：
@@ -129,9 +133,9 @@ AAPL、GOOGL、MSFT、NVDA和TSLA的金融数据是免费的，不需要API密�
 
 ### 运行对冲基金
 
-#### 使用Poetry
+#### 使用uv
 ```bash
-poetry run python src/main.py --ticker AAPL,MSFT,NVDA
+uv run python src/main.py --ticker AAPL,MSFT,NVDA
 ```
 
 #### 使用Docker
@@ -149,8 +153,8 @@ run.bat --ticker AAPL,MSFT,NVDA main
 您还可以指定`--ollama`标志，使用本地LLM运行AI对冲基金。
 
 ```bash
-# 使用Poetry：
-poetry run python src/main.py --ticker AAPL,MSFT,NVDA --ollama
+# 使用uv：
+uv run python src/main.py --ticker AAPL,MSFT,NVDA --ollama
 
 # 使用Docker（在Linux/Mac上）：
 ./run.sh --ticker AAPL,MSFT,NVDA --ollama main
@@ -162,8 +166,8 @@ run.bat --ticker AAPL,MSFT,NVDA --ollama main
 您还可以指定`--show-reasoning`标志，将每个智能体的推理过程打印到控制台。
 
 ```bash
-# 使用Poetry：
-poetry run python src/main.py --ticker AAPL,MSFT,NVDA --show-reasoning
+# 使用uv：
+uv run python src/main.py --ticker AAPL,MSFT,NVDA --show-reasoning
 
 # 使用Docker（在Linux/Mac上）：
 ./run.sh --ticker AAPL,MSFT,NVDA --show-reasoning main
@@ -175,8 +179,8 @@ run.bat --ticker AAPL,MSFT,NVDA --show-reasoning main
 您可以选择指定开始和结束日期，为特定时间段做出决策。
 
 ```bash
-# 使用Poetry：
-poetry run python src/main.py --ticker AAPL,MSFT,NVDA --start-date 2024-01-01 --end-date 2024-03-01 
+# 使用uv：
+uv run python src/main.py --ticker AAPL,MSFT,NVDA --start-date 2024-01-01 --end-date 2024-03-01 
 
 # 使用Docker（在Linux/Mac上）：
 ./run.sh --ticker AAPL,MSFT,NVDA --start-date 2024-01-01 --end-date 2024-03-01 main
@@ -187,9 +191,9 @@ run.bat --ticker AAPL,MSFT,NVDA --start-date 2024-01-01 --end-date 2024-03-01 ma
 
 ### 运行回测器
 
-#### 使用Poetry
+#### 使用uv
 ```bash
-poetry run python src/backtester.py --ticker AAPL,MSFT,NVDA
+uv run python src/backtester.py --ticker AAPL,MSFT,NVDA
 ```
 
 #### 使用Docker

@@ -36,7 +36,7 @@ def call_llm(
     model_info = get_model_info(model_name)
     llm = get_model(model_name, model_provider)
     
-    # 对于不支持JSON的模型，我们可以使用结构化输出
+    # 对于不支持JSON的模型，我们不能用使用结构化输出（也就是支持的才能用with_structured_output）
     if not (model_info and not model_info.has_json_mode()):
         llm = llm.with_structured_output(
             pydantic_model,
