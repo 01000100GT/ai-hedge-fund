@@ -398,7 +398,7 @@ if __name__ == "__main__":
         # 这里我们创建一个新的 choices 列表来演示。
         cloud_model_choices = [questionary.Choice(display, value=(name, provider)) for display, name, provider in LLM_ORDER]
         # 添加自定义 OpenAI 兼容选项
-        cloud_model_choices.append(questionary.Choice(display="OpenAI Compatible (Custom Endpoint via env vars)", value=("openai_compatible_custom", "OpenAICompatible")))  # 显示名称  # 特殊标识符
+        cloud_model_choices.append(questionary.Choice(title="OpenAI Compatible (Custom Endpoint via env vars)", value=("openai_compatible_custom", "OpenAICompatible")))  # 显示名称  # 特殊标识符
 
         # 使用 questionary 显示选择列表，让用户选择云端 LLM 模型或自定义兼容端点。
         model_choice = questionary.select(

@@ -118,7 +118,9 @@ def get_model_info(model_name: str, model_provider: str) -> LLMModel | None:
 
 def get_models_list():
     """Get the list of models for API responses."""
-    return [{"display_name": model.display_name, "model_name": model.model_name, "provider": model.provider.value} for model in AVAILABLE_MODELS]
+    all_models = [{"display_name": model.display_name, "model_name": model.model_name, "provider": model.provider.value} for model in AVAILABLE_MODELS]
+    all_models.append({"display_name": "OpenAI Compatible (Custom Endpoint via env vars)", "model_name": "custom_openai_compatible_model", "provider": ModelProvider.OPENAI_COMPATIBLE.value})
+    return all_models
 
 
 def get_model(model_name: str, model_provider: ModelProvider) -> ChatOpenAI | ChatGroq | ChatOllama | None:

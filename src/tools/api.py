@@ -130,7 +130,7 @@ def get_prices(ticker: str, start_date: str, end_date: str) -> list[Price]:
         return []
 
     # Cache the results using the comprehensive cache key
-    _cache.set_prices(cache_key, [p.model_dump() for p in prices])
+    _cache.set_prices(ticker, [p.model_dump() for p in prices])
     return prices
 
 
@@ -178,7 +178,7 @@ def get_financial_metrics(
         return []
 
     # Cache the results as dicts using the comprehensive cache key
-    _cache.set_financial_metrics(cache_key, [m.model_dump() for m in financial_metrics])
+    _cache.set_financial_metrics(ticker, [m.model_dump() for m in financial_metrics])
     return financial_metrics
 
 
@@ -297,7 +297,7 @@ def get_insider_trades(
         return []
 
     # Cache the results using the comprehensive cache key
-    _cache.set_insider_trades(cache_key, [trade.model_dump() for trade in all_trades])
+    _cache.set_insider_trades(ticker, [trade.model_dump() for trade in all_trades])
     return all_trades
 
 
@@ -373,7 +373,7 @@ def get_company_news(
         return []
 
     # Cache the results using the comprehensive cache key
-    _cache.set_company_news(cache_key, [news.model_dump() for news in all_news])
+    _cache.set_company_news(ticker, [news.model_dump() for news in all_news])
     return all_news
 
 

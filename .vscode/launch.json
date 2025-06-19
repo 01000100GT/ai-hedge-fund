@@ -13,45 +13,32 @@
             "justMyCode": false
         },
         {
-            "name": "src/main.py (uv run - AAPL,MSFT,NVDA)",
+            "name": "src/main.py (AAPL)",
             "type": "debugpy",
             "request": "launch",
-            "module": "uv",
+            "program": "${workspaceFolder}/src/main.py",
             "args": [
-                "run",
-                "python",
-                "src/main.py",
                 "--ticker",
-                "AAPL,MSFT,NVDA",
+                "AAPL",
                 "--show-reasoning"
             ],
             "console": "integratedTerminal",
-            "justMyCode": false,
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "PYTHONPATH": "${workspaceFolder}"
-            }
+            "justMyCode": false
         },
         {
-            "name": "src/main.py (uv run - 自定义参数)",
+            "name": "src/main.py (自定义参数:input:tickers)",
             "type": "debugpy",
             "request": "launch",
-            "module": "uv",
+            "program": "${workspaceFolder}/src/main.py",
             "args": [
-                "run",
-                "python",
-                "src/main.py",
                 "--ticker",
                 "${input:tickers}",
                 "--show-reasoning"
             ],
             "console": "integratedTerminal",
-            "justMyCode": false,
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "PYTHONPATH": "${workspaceFolder}"
-            }
+            "justMyCode": false
         },
+        
 
         {
             "name": "Frontend",
@@ -90,7 +77,7 @@
         {
             "id": "tickers",
             "description": "输入股票代码（逗号分隔）",
-            "default": "AAPL,MSFT,NVDA",
+            "default": "AAPL",
             "type": "promptString"
         }
     ]
